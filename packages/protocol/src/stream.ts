@@ -4,28 +4,53 @@
  * Notifications are capped at the negotiated packet size and have no relationship
  * to frame boundaries, so a frame may arrive across several notifications and a
  * notification may carry several frames. Damaged or unrecognised input has to be
- * survivable too: the marker plus a cheaply trusted declared length is what makes
- * resynchronisation possible.
+ * survivable too.
+ *
+ * Resynchronisation is only as good as its ability to recognise a frame start.
+ * The marker alone is not enough: a payload byte can equal it, and reading a
+ * length out of the payload behind it can park the stream waiting for bytes that
+ * never arrive. Supply `headerChecksum` and a candidate is confirmed from its
+ * first eight bytes before the reader commits to it, which is what the two-sum
+ * design is for.
  *
  * Nothing here touches Bluetooth. It takes byte runs from whatever produced them
  * and returns frames, which is what lets the same code run in the phone, the
  * server and CI.
  */
 
-import { decodeEnvelope, type Envelope } from './envelope.ts';
+import type { Crc } from './crc.ts';
+import { decodeEnvelope, decodeHeader, type Envelope, type FrameHeader } from './envelope.ts';
 import { FRAME_MARKER } from './spec.ts';
+
+export type FrameStreamOptions = {
+  /**
+   * Checksum over the first six bytes of a frame. Without it the reader trusts
+   * any marker byte it finds, which is safe for well-formed input and fragile
+   * for damaged input. The band's variant is not yet identified, so there is no
+   * default: see docs/PROTOCOL.md on evidence tiers.
+   */
+  readonly headerChecksum?: Crc;
+};
 
 export type StreamStats = {
   /** Frames emitted since construction. */
   readonly framesEmitted: number;
   /** Bytes dropped while resynchronising. A rising count means real trouble. */
   readonly bytesDiscarded: number;
+  /** Candidates that carried the marker but failed their header checksum. */
+  readonly falseStartsRejected: number;
 };
 
 export class FrameStream {
+  readonly #headerChecksum: Crc | undefined;
   #pending: Uint8Array = new Uint8Array(0);
   #framesEmitted = 0;
   #bytesDiscarded = 0;
+  #falseStartsRejected = 0;
+
+  constructor(options: FrameStreamOptions = {}) {
+    this.#headerChecksum = options.headerChecksum;
+  }
 
   /** Bytes held back waiting for the rest of a frame. */
   get pendingBytes(): number {
@@ -33,7 +58,11 @@ export class FrameStream {
   }
 
   get stats(): StreamStats {
-    return { framesEmitted: this.#framesEmitted, bytesDiscarded: this.#bytesDiscarded };
+    return {
+      framesEmitted: this.#framesEmitted,
+      bytesDiscarded: this.#bytesDiscarded,
+      falseStartsRejected: this.#falseStartsRejected,
+    };
   }
 
   /** Drop any partial frame. For use after a disconnect, not during a transfer. */
@@ -49,24 +78,26 @@ export class FrameStream {
     let at = 0;
 
     while (at < this.#pending.length) {
-      const result = decodeEnvelope(this.#pending, at);
+      const decoded = decodeHeader(this.#pending, at);
 
-      if (result.ok) {
-        frames.push(result.envelope);
-        at += result.envelope.frameLength;
-        this.#framesEmitted += 1;
+      // Fewer than eight bytes: nothing can be judged yet.
+      if (!decoded.ok && decoded.error.kind === 'incomplete') break;
+
+      if (!decoded.ok || !this.#confirms(decoded.header)) {
+        at = this.#resynchronise(at);
         continue;
       }
 
-      if (result.error.kind === 'incomplete') break;
+      // The header is trusted, so the frame length is too. Wait for the body
+      // rather than rescanning, which is what the cheap header sum buys.
+      if (this.#pending.length - at < decoded.header.frameLength) break;
 
-      // Either the byte is not a marker, or a frame claimed a length no frame can
-      // have. Both mean this position is not a frame start, so skip past it and
-      // look for the next marker.
-      const next = indexOfMarker(this.#pending, at + 1);
-      const skipTo = next === -1 ? this.#pending.length : next;
-      this.#bytesDiscarded += skipTo - at;
-      at = skipTo;
+      const result = decodeEnvelope(this.#pending, at);
+      if (!result.ok) break;
+
+      frames.push(result.envelope);
+      this.#framesEmitted += 1;
+      at += result.envelope.frameLength;
     }
 
     // Views handed out above point into this buffer, so it is replaced rather
@@ -74,6 +105,23 @@ export class FrameStream {
     // holds them.
     this.#pending = this.#pending.slice(at);
     return frames;
+  }
+
+  /** True when this looks like a real frame start. */
+  #confirms(header: FrameHeader): boolean {
+    if (this.#headerChecksum === undefined) return true;
+    if (this.#headerChecksum(header.headerChecksummed) === header.headerChecksum) return true;
+
+    this.#falseStartsRejected += 1;
+    return false;
+  }
+
+  /** Skip the byte at `at` and everything up to the next marker. */
+  #resynchronise(at: number): number {
+    const next = indexOfMarker(this.#pending, at + 1);
+    const skipTo = next === -1 ? this.#pending.length : next;
+    this.#bytesDiscarded += skipTo - at;
+    return skipTo;
   }
 }
 

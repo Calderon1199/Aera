@@ -9,7 +9,15 @@
  * treating one as proof about firmware sends you chasing bugs that do not exist.
  */
 
-import { BODY_CHECKSUM_LENGTH, FRAME, FRAME_MARKER, HEADER_LENGTH, ROUTING_LENGTH } from '../spec.ts';
+import type { Crc } from '../crc.ts';
+import {
+  BODY_CHECKSUM_LENGTH,
+  FRAME,
+  FRAME_MARKER,
+  HEADER_CHECKSUMMED_LENGTH,
+  HEADER_LENGTH,
+  ROUTING_LENGTH,
+} from '../spec.ts';
 
 export type SyntheticFrame = {
   readonly revision?: number;
@@ -22,6 +30,12 @@ export type SyntheticFrame = {
   readonly bodyChecksum?: number;
   /** Overrides the computed value, for testing frames that lie about their size. */
   readonly declaredLength?: number;
+  /**
+   * Compute real checksums with these, instead of writing the literal values
+   * above. The variant is the test's choice and says nothing about the band,
+   * whose own variant is not identified.
+   */
+  readonly sign?: { readonly header?: Crc; readonly body?: Crc };
 };
 
 /** Build one well-formed frame, or a deliberately malformed one via overrides. */
@@ -49,6 +63,16 @@ export function buildFrame(frame: SyntheticFrame = {}): Uint8Array {
   view.setUint16(FRAME.HEADER_CHECKSUM, headerChecksum, true);
   bytes.set(body, FRAME.BODY);
   view.setUint32(FRAME.BODY + body.length, bodyChecksum >>> 0, true);
+
+  const signHeader = frame.sign?.header;
+  if (signHeader !== undefined) {
+    view.setUint16(FRAME.HEADER_CHECKSUM, signHeader(bytes.subarray(0, HEADER_CHECKSUMMED_LENGTH)), true);
+  }
+
+  const signBody = frame.sign?.body;
+  if (signBody !== undefined) {
+    view.setUint32(FRAME.BODY + body.length, signBody(body) >>> 0, true);
+  }
 
   return bytes;
 }

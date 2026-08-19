@@ -8,8 +8,17 @@
 import { deepStrictEqual, strictEqual } from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
+import { CRC_CATALOGUE, createCrc } from './crc.ts';
 import { FrameStream } from './stream.ts';
 import { buildFrame, concat } from './testing/synthetic.ts';
+
+/**
+ * A variant picked for these tests alone. The band's own header checksum is not
+ * identified, so this stands in to prove the gating mechanism works, and claims
+ * nothing about firmware.
+ */
+const headerChecksum = createCrc(CRC_CATALOGUE['CRC-16/KERMIT']);
+const signed = { header: headerChecksum };
 
 const bodyOf = (frame: { body: Uint8Array }): number[] => [...frame.body];
 
@@ -107,18 +116,17 @@ describe('FrameStream', () => {
   });
 
   /**
-   * KNOWN GAP, blocked on the checksum layer.
+   * KNOWN GAP, blocked on identifying the band's checksum variant.
    *
-   * Resynchronisation currently trusts the first marker byte it finds. When that
-   * byte is payload rather than a frame start, the bytes at the length position
-   * are read as a length, and a large one parks the stream waiting for data that
-   * will never arrive. Every real frame behind it is then never emitted.
+   * An unguarded reader trusts the first marker byte it finds. When that byte is
+   * payload rather than a frame start, the bytes behind it are read as a length,
+   * and a large one parks the stream waiting for data that never arrives.
    *
-   * docs/PROTOCOL.md states the intended defence: the header checksum covers the
-   * declared length, so a candidate frame start can be confirmed before the
-   * stream commits to it. That check cannot be written until the checksum
-   * parameters are sourced, so this failure is recorded rather than papered over
-   * with a guessed maximum frame length.
+   * The defence now exists and is proven in the two tests below: pass
+   * `headerChecksum` and a candidate is confirmed before the reader commits to
+   * it. What is still missing is which variant the band uses, so production code
+   * has nothing to pass yet. This closes when spec.ts can name it, not by
+   * guessing a maximum frame length.
    */
   it('recovers the frame after a false marker inside a payload', { todo: true }, () => {
     const stream = new FrameStream();
@@ -131,6 +139,53 @@ describe('FrameStream', () => {
 
     strictEqual(frames.length, 1);
     strictEqual(frames[0]?.body[2], 0x7f);
+  });
+
+  it('documents the unguarded reader stalling on a false marker', () => {
+    const stream = new FrameStream();
+    stream.push(
+      concat(
+        buildFrame({ declaredLength: 2, data: [0xaa, 0xaa, 0x0d, 0xf0] }),
+        buildFrame({ opcode: 0x7f }),
+      ),
+    );
+
+    // Locked in deliberately. If this starts failing, the gap above has been
+    // closed and the todo test should be the one asserting the behaviour.
+    strictEqual(stream.pendingBytes > 0, true);
+    strictEqual(stream.stats.framesEmitted, 0);
+  });
+
+  it('skips a false marker when a header checksum is supplied', () => {
+    const stream = new FrameStream({ headerChecksum });
+    const frames = stream.push(
+      concat(
+        buildFrame({ declaredLength: 2, data: [0xaa, 0xaa, 0x0d, 0xf0], sign: signed }),
+        buildFrame({ opcode: 0x7f, sign: signed }),
+      ),
+    );
+
+    strictEqual(frames.length, 1);
+    strictEqual(frames[0]?.body[2], 0x7f);
+    strictEqual(stream.stats.falseStartsRejected > 0, true);
+    strictEqual(stream.pendingBytes, 0);
+  });
+
+  it('accepts a confirmed frame that is still arriving, without rescanning', () => {
+    const bytes = buildFrame({ data: [1, 2, 3, 4], sign: signed });
+    const stream = new FrameStream({ headerChecksum });
+
+    strictEqual(stream.push(bytes.subarray(0, 10)).length, 0);
+    strictEqual(stream.stats.falseStartsRejected, 0);
+    strictEqual(stream.push(bytes.subarray(10)).length, 1);
+  });
+
+  it('rejects a frame whose header checksum does not match', () => {
+    const stream = new FrameStream({ headerChecksum });
+    const frames = stream.push(buildFrame({ headerChecksum: 0x0000 }));
+
+    strictEqual(frames.length, 0);
+    strictEqual(stream.stats.falseStartsRejected, 1);
   });
 
   it('counts what it has emitted', () => {

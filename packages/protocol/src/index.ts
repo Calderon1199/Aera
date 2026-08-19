@@ -25,5 +25,5 @@ export {
   type CrcName,
   type CrcParameters,
 } from './crc.ts';
-export { FrameStream, type StreamStats } from './stream.ts';
+export { FrameStream, type FrameStreamOptions, type StreamStats } from './stream.ts';
 export * as spec from './spec.ts';
