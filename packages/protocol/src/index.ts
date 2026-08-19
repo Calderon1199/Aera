@@ -14,4 +14,5 @@ export {
   type EnvelopeError,
   type EnvelopeResult,
 } from './envelope.ts';
+export { FrameStream, type StreamStats } from './stream.ts';
 export * as spec from './spec.ts';
