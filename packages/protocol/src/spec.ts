@@ -174,3 +174,63 @@ export const HISTORY_RECORD_UNVERIFIED = [
  * the layout itself bounds how many a record can carry.
  */
 export const INTERBEAT_MAX = (36 - HISTORY_RECORD.INTERBEAT_FIRST) / 2;
+
+/**
+ * Commands this project sends. Deliberately partial.
+ *
+ * Every command here is reversible and safe to send twice, which is the bar
+ * docs/PROTOCOL.md sets. Source: ryanbr/noop docs/PROTOCOL.md.
+ */
+export const COMMAND = {
+  /** Ask the band to start releasing stored history. Payload [0x00]. */
+  REQUEST_HISTORY: 22,
+  /** Tell the band a batch is safely stored. Payload [0x01] then the token. */
+  CONFIRM_HISTORY: 23,
+} as const;
+
+/**
+ * Reachable on this protocol, excluded by design, recorded so they can be
+ * refused rather than so they can be sent.
+ *
+ * A decoding library should not contain the means to brick hardware. These
+ * numbers exist here only to give `encodeCommand` something to check against,
+ * and nothing in this codebase may send them. See rule 6 of the working
+ * agreement, which admits no exceptions.
+ */
+export const NEVER_SEND: Readonly<Record<number, string>> = {
+  25: 'cursor reset, would discard history the band has not yet released',
+  29: 'reboot',
+  32: 'power cycle',
+};
+
+/**
+ * Metadata subtypes, at the opcode position of a metadata packet, which is frame
+ * offset 10. These bracket a history transfer.
+ */
+export const METADATA = {
+  HISTORY_START: 1,
+  HISTORY_END: 2,
+  HISTORY_COMPLETE: 3,
+} as const;
+
+/**
+ * The position token carried by a history-end packet, which the confirmation
+ * echoes back byte for byte.
+ *
+ * Prior work describes the confirmation payload as [0x01] followed by eight
+ * bytes of the end data, and describes the end payload as beginning at frame
+ * offset 11. Which eight bytes is not stated unambiguously, so this takes the
+ * payload's first eight and copies them verbatim.
+ *
+ * Copying rather than rebuilding is what makes that uncertainty survivable. The
+ * bytes go back exactly as they arrived, so a wrong reading of their internal
+ * structure cannot corrupt them. Only the extent could be wrong, and that is one
+ * constant to change once a capture settles it. Never rebuild this token from
+ * decoded numbers.
+ */
+export const HISTORY_END = {
+  PAYLOAD: 11,
+  TOKEN_LENGTH: 8,
+  /** Recorded for completeness. Not used: the token is echoed, not interpreted. */
+  TRIM_CURSOR: 21,
+} as const;
