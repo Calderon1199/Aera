@@ -18,6 +18,12 @@ export {
   type HeaderResult,
 } from './envelope.ts';
 export {
+  bodyChecksum,
+  headerChecksum,
+  verifyEnvelope,
+  type VerifyResult,
+} from './checksums.ts';
+export {
   CRC_CATALOGUE,
   createCrc,
   identifyCrc,

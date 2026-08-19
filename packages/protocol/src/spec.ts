@@ -7,9 +7,17 @@
  * positions are published by prior community reverse-engineering and have not yet
  * been re-checked against hardware by this project.
  *
- * Checksum parameters are deliberately absent. They are not recorded in
- * docs/PROTOCOL.md, and a guessed polynomial produces confident nonsense, so the
- * envelope decoder extracts both checksum fields and verifies neither.
+ * Provenance. The envelope positions come from docs/PROTOCOL.md. The checksum
+ * variants and the opening frame come from the prior community work that
+ * document credits, specifically ryanbr/noop docs/PROTOCOL.md, and are recorded
+ * here as facts about bytes on a wire rather than as anyone's code.
+ *
+ * Evidence tier: Documented throughout. Nothing here has been checked against
+ * hardware by this project, which is what Verified means in docs/PROTOCOL.md.
+ * The framing does have unusually strong corroboration: the opening frame below
+ * satisfies both checksums under exactly one catalogue variant each, and a wrong
+ * offset or a wrong variant would not produce that agreement. Strong is still
+ * not Verified.
  */
 
 /** First byte of every frame. Start of frame, and the resynchronisation anchor. */
@@ -52,3 +60,23 @@ export const BODY = {
  * variant and opcode, plus the trailer the declared length also counts.
  */
 export const MIN_DECLARED_LENGTH = BODY.DATA + BODY_CHECKSUM_LENGTH;
+
+/**
+ * Checksum variants, named in prior work and confirmed against OPENING_FRAME:
+ * of the whole catalogue, exactly one variant of each width reproduces that
+ * frame's two checksums.
+ */
+export const HEADER_CHECKSUM_VARIANT = 'CRC-16/MODBUS';
+export const BODY_CHECKSUM_VARIANT = 'CRC-32/ISO-HDLC';
+
+/**
+ * The opening frame the host writes to begin a session on the current
+ * generation, published by ryanbr/noop as a static constant.
+ *
+ * Its value is that nobody on this project chose it. It is the one piece of
+ * evidence here that this decoder reads real bytes correctly rather than reading
+ * its own assumptions back to itself.
+ */
+export const OPENING_FRAME = Uint8Array.from([
+  0xaa, 0x01, 0x08, 0x00, 0x00, 0x01, 0xe6, 0x71, 0x23, 0x01, 0x91, 0x01, 0x36, 0x3e, 0x5c, 0x8d,
+]);
