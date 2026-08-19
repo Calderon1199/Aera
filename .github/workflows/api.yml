@@ -1,0 +1,49 @@
+name: api
+
+on:
+  push:
+    paths: ['apps/api/**', '.github/workflows/api.yml']
+  pull_request:
+    paths: ['apps/api/**', '.github/workflows/api.yml']
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: php tests
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: aera_test
+          POSTGRES_USER: aera
+          POSTGRES_PASSWORD: aera
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U aera"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_pgsql, mbstring, bcmath
+          coverage: none
+
+      - name: Install
+        working-directory: apps/api
+        run: composer install --prefer-dist --no-progress
+
+      - name: Test
+        working-directory: apps/api
+        env:
+          DB_HOST: 127.0.0.1
+          DB_DATABASE: aera_test
+          DB_USERNAME: aera
+          DB_PASSWORD: aera
+        run: ./vendor/bin/pest
