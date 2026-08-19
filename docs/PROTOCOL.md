@@ -23,6 +23,13 @@ from those facts.
 Nobody's code is copied, transcribed, or ported. Where a prior project's implementation is
 licensed restrictively, that licence governs its code and not the facts it documents.
 
+**What was taken from it, and what was checked.** The checksum variants, the opening frame
+and the packet numbering below come from that work. The framing was not taken on trust:
+the opening frame satisfies both of its checksums under exactly one catalogue variant of
+each width, and a wrong offset or a wrong variant would not produce that agreement. That
+is corroboration between independent facts, not a hardware check, so the tier is still
+Documented.
+
 ## Evidence tiers
 
 Every field claim carries one of these. The distinction is not pedantry. In this domain a
@@ -70,6 +77,22 @@ Two checksums, two jobs. The header sum covers only the first six bytes, so the 
 length can be trusted cheaply; that is what makes stream resynchronisation possible. The
 body sum covers the contents.
 
+| Sum | Variant | Covers |
+|---|---|---|
+| Header, u16 at offset 6 | CRC-16/MODBUS | offsets 0..5 |
+| Body, u32 trailer | CRC-32/ISO-HDLC | the body only |
+
+The opening frame the host writes to begin a session is a published constant:
+
+```
+aa 01 08 00 00 01 e6 71 23 01 91 01 36 3e 5c 8d
+```
+
+Its bytes were chosen by nobody on this project, so it is the project's one piece of
+evidence that the decoder reads real bytes rather than its own assumptions. It declares 8,
+occupies 8 + 8 = 16 bytes, and satisfies both sums. It lives in
+`packages/protocol/src/spec.ts` and is exercised on every test run.
+
 **This is the project's best debugging tool.** A passing body checksum proves the framing
 was parsed correctly, which converts "did I get this right?" from judgement into a boolean.
 
@@ -113,8 +136,15 @@ Echo the position token verbatim. Do not rebuild it from its decoded numbers.
 ## The stored record
 
 One entry per second, retained roughly a fortnight. Field positions are absolute frame
-offsets and are gated on a **revision byte**: firmware writes several layouts, and
+offsets and are gated on a **record version byte**: firmware writes several layouts, and
 decoding one against another's positions produces confident nonsense.
+
+**Two different bytes, and confusing them is the exact failure this rule exists to
+prevent.** Offset 1 is the *framing* format byte, which says how the envelope is laid out.
+The *record* layout is selected by the byte at offset 9, the second byte of the body, which
+is the sequence position of the packet triple. A historical record frame carries its layout
+version there. Branch on offset 9 for field positions; offset 1 tells you nothing about
+them.
 
 Positions live in `packages/protocol/src/spec.ts` and nowhere else. Duplicating them
 guarantees drift, and a drifted offset fails silently.
