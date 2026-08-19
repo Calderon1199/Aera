@@ -64,8 +64,16 @@ Requires PHP 8.3+, Composer 2, Node 22+, and Docker.
 
 > **Compose v1 vs v2.** If `docker compose` reports an unknown command, you have the
 > deprecated standalone `docker-compose` (v1) rather than the v2 plugin. The compose file
-> works with both (substitute `docker-compose up -d`), but v2 is worth installing:
-> `sudo apt install docker-compose-plugin`.
+> works with both (substitute `docker-compose up -d`), but v2 is worth installing, and the
+> package name depends on where Docker itself came from:
+>
+> ```bash
+> sudo apt install docker-compose-v2       # Docker from Ubuntu's repos (docker.io)
+> sudo apt install docker-compose-plugin   # Docker from download.docker.com (docker-ce)
+> ```
+>
+> Installing the wrong one fails with "Unable to locate package". `dpkg -l | grep docker`
+> tells you which you have.
 
 ## On the protocol
 
