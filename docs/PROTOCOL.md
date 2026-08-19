@@ -149,18 +149,37 @@ them.
 Positions live in `packages/protocol/src/spec.ts` and nowhere else. Duplicating them
 guarantees drift, and a drifted offset fails silently.
 
-| Field | Tier | Notes |
-|---|---|---|
-| Timestamp | Documented | Unix seconds as written by the device |
-| Pulse | Documented | Reported as matching the reference at 96/96 overlapping samples in prior work |
-| Inter-beat intervals | Documented | The input to any variability measure |
-| Orientation (3× float) | Documented | Magnitude near 1 g when correctly aligned, so it is self-checking |
-| Motion magnitude | Documented | Gravity removed |
-| Surface temperature | Documented | Scaled; the divisor is the whole claim |
-| Step counter | Documented | Cumulative and wrapping; differences are steps, the value is not |
-| Rest state | Documented | Bit field |
-| Optical channels | **Present** | Undecoded by anyone. Carried raw. |
-| Saturation candidate | **Present** | Cross-device evidence conflicts. Never surfaced. |
+The field map below is layout version 18, and comes from the same prior work as the
+framing, specifically its type-47 field inventory. One caveat governs the whole table and
+belongs next to it rather than in a footnote: **the correlations behind these names were
+established over a single overnight capture of one still, sleeping subject.** The author
+states plainly that they do not extend to waking, exercise or off-wrist wear. That is
+enough to decode against and nowhere near enough to call Verified.
+
+Offsets are absolute frame offsets. The layout is selected by offset 9, never by offset 1.
+
+| Offset | Field | Tier | Notes |
+|---|---|---|---|
+| 11 | Record index | Documented | Lifetime counter, monotonic |
+| 15 | Timestamp | Documented | Unix seconds as written by the device |
+| 22 | Pulse | Documented | Reported as matching the reference exactly in prior work |
+| 23, 24+ | Inter-beat intervals | Documented | Count, then u16 milliseconds. The input to any variability measure |
+| 41 | Motion magnitude | Documented | Gravity removed, in g |
+| 45, 49, 53 | Orientation (3× float) | Documented | Magnitude near 1 g when correctly aligned, so it is self-checking |
+| 57 | Step counter | Documented | Cumulative and wrapping; differences are steps, the value is not |
+| 69, 71 | Auxiliary temperatures | Documented | Signed, divided by 10. The divisor is the whole claim |
+| 73 | Surface temperature | Documented | Unsigned, divided by 100 |
+| 36, 37, 40 | Pulse quality bytes | **Present** | A flags byte, a duplicate pulse and a confidence score in prior work. Carried raw |
+| 59, 63 | Motion side channels | **Present** | Cadence-like and a three-valued class. No established unit |
+| 75, 77, 79 | Status words | **Present** | Packed, unmapped |
+| 81 | Rest state | **Present** | Partially mapped in prior work. Carried raw, not surfaced |
+| 82 | Saturation candidate | **Present** | Cross-device evidence conflicts. Never surfaced |
+| 106 to 109 | Optical channels | **Present** | Baselines and amplitudes where 128 reads as a sentinel rather than a measurement. Carried raw |
+| 113 | Unidentified float | **Present** | A quality metric in prior work. Carried raw |
+
+Everything marked Present is read into an `unverified` map keyed by offset and width, so a
+saturation candidate is `u8_82` and never `spo2`. Nothing in that map can be displayed or
+fed to analysis, because it has no name that any consumer would look for.
 
 The optical channels are the strongest argument for keeping raw frames forever: when
 somebody works them out, stored history can be re-decoded.

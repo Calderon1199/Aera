@@ -45,6 +45,12 @@ milestone verifiable with no device attached.
 this project chose, validates against both checksums and decodes to the expected packet
 kind and opcode.
 
+**Status: met.** The opening frame validates under exactly one catalogue variant per
+checksum, and the suite covers all four pieces. Note what this does and does not settle:
+the framing is corroborated arithmetically, while the record field names rest on prior
+work's single overnight capture. Nothing is Verified until M4 cross-checks a decoded
+record against the standard characteristic on real hardware.
+
 ---
 
 ## M2: Transfer state machine
