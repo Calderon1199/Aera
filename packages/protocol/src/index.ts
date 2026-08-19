@@ -31,5 +31,14 @@ export {
   type CrcName,
   type CrcParameters,
 } from './crc.ts';
+export {
+  decodeHistoryRecord,
+  findImplausibilities,
+  type Gravity,
+  type HistoryRecord,
+  type Implausibility,
+  type RecordError,
+  type RecordResult,
+} from './record.ts';
 export { FrameStream, type FrameStreamOptions, type StreamStats } from './stream.ts';
 export * as spec from './spec.ts';

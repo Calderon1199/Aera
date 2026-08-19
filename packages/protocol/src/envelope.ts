@@ -40,6 +40,8 @@ export type FrameHeader = {
 };
 
 export type Envelope = FrameHeader & {
+  /** The whole frame, so that frame-absolute field offsets can be read directly. */
+  readonly frame: Uint8Array;
   readonly body: Uint8Array;
   /** The four bytes after the body, unverified. */
   readonly bodyChecksum: number;
@@ -131,6 +133,7 @@ export function decodeEnvelope(bytes: Uint8Array, offset = 0): EnvelopeResult {
     ok: true,
     envelope: {
       ...header,
+      frame: bytes.subarray(offset, offset + header.frameLength),
       body: bytes.subarray(bodyStart, bodyEnd),
       // Coerced unsigned: a checksum with the top bit set is a large positive
       // number, never a negative one.

@@ -80,3 +80,97 @@ export const BODY_CHECKSUM_VARIANT = 'CRC-32/ISO-HDLC';
 export const OPENING_FRAME = Uint8Array.from([
   0xaa, 0x01, 0x08, 0x00, 0x00, 0x01, 0xe6, 0x71, 0x23, 0x01, 0x91, 0x01, 0x36, 0x3e, 0x5c, 0x8d,
 ]);
+
+/**
+ * Packet kinds, at the first byte of the body. From ryanbr/noop docs/PROTOCOL.md.
+ * Only the kinds this project reads are listed.
+ */
+export const PACKET_KIND = {
+  COMMAND: 35,
+  COMMAND_RESPONSE: 36,
+  REALTIME_DATA: 40,
+  HISTORICAL_DATA: 47,
+  EVENT: 48,
+  METADATA: 49,
+} as const;
+
+/**
+ * The stored history record, layout version 18.
+ *
+ * Offsets are absolute frame offsets, exactly as the source states them, so that
+ * this table can be compared against it line by line. They are NOT relative to
+ * the body, and the version that selects this layout is the byte at offset 9,
+ * not the framing format byte at offset 1.
+ *
+ * Source: ryanbr/noop docs/BLE_REVERSE_ENGINEERING.md, the current generation's
+ * type-47 version-18 field map. Tier: Documented. Read the caveat in
+ * docs/PROTOCOL.md before trusting any of it: the correlations behind these
+ * names come from a single overnight capture of one still, sleeping subject,
+ * and are not established for waking, exercise or off-wrist wear.
+ */
+export const HISTORY_RECORD_VERSION = 18;
+
+/** Frame bytes a version 18 record occupies, confirmed across the source's corpus. */
+export const HISTORY_RECORD_LENGTH = 124;
+
+export const HISTORY_RECORD = {
+  /** Selects the layout. Everything below is meaningless if this is not 18. */
+  VERSION: 9,
+  /** Lifetime counter, monotonic across records. */
+  RECORD_INDEX: 11,
+  /** Unix seconds as written by the device. */
+  TIMESTAMP: 15,
+  PULSE: 22,
+  INTERBEAT_COUNT: 23,
+  INTERBEAT_FIRST: 24,
+  /** Motion with gravity removed. */
+  MOTION_MAGNITUDE: 41,
+  GRAVITY_X: 45,
+  GRAVITY_Y: 49,
+  GRAVITY_Z: 53,
+  /** Cumulative and wrapping. Differences are steps; the value is not. */
+  STEP_COUNTER: 57,
+  /** Signed, divided by 10 for degrees Celsius. */
+  AUX_TEMPERATURE_1: 69,
+  AUX_TEMPERATURE_2: 71,
+  /** Unsigned, divided by 100 for degrees Celsius. The divisor is the claim. */
+  SKIN_TEMPERATURE: 73,
+} as const;
+
+/**
+ * Positions whose meaning is not established. Read into `unverified` and keyed
+ * by position and width, never by a physiological name, because a byte read at
+ * the wrong offset still produces a number that looks like a measurement.
+ *
+ * What prior work suspects each of being, recorded here and nowhere the code can
+ * act on it: 36 heart-rate quality flags, 37 a duplicate pulse agreeing with
+ * offset 22 on 99.575% of its corpus, 40 a cardiac confidence score, 59 a
+ * cadence-like value with no established unit, 63 a three-valued wear or
+ * activity class, 75 to 79 packed status words, 81 a sleep state in bits 4 and
+ * 5, 82 a saturation candidate whose evidence conflicts across devices, 106 to
+ * 109 optical baselines and amplitudes where 128 reads as a sentinel rather
+ * than a measurement, and 113 an unidentified quality metric.
+ */
+export const HISTORY_RECORD_UNVERIFIED = [
+  { offset: 36, width: 1 },
+  { offset: 37, width: 1 },
+  { offset: 40, width: 1 },
+  { offset: 59, width: 1 },
+  { offset: 63, width: 1 },
+  { offset: 75, width: 2 },
+  { offset: 77, width: 2 },
+  { offset: 79, width: 2 },
+  { offset: 81, width: 1 },
+  { offset: 82, width: 1 },
+  { offset: 106, width: 1 },
+  { offset: 107, width: 1 },
+  { offset: 108, width: 1 },
+  { offset: 109, width: 1 },
+  { offset: 113, width: 4 },
+] as const;
+
+/**
+ * Interbeat intervals run from INTERBEAT_FIRST up to the next mapped field, so
+ * the layout itself bounds how many a record can carry.
+ */
+export const INTERBEAT_MAX = (36 - HISTORY_RECORD.INTERBEAT_FIRST) / 2;

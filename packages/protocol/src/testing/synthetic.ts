@@ -16,6 +16,10 @@ import {
   FRAME_MARKER,
   HEADER_CHECKSUMMED_LENGTH,
   HEADER_LENGTH,
+  HISTORY_RECORD,
+  HISTORY_RECORD_LENGTH,
+  HISTORY_RECORD_VERSION,
+  PACKET_KIND,
   ROUTING_LENGTH,
 } from '../spec.ts';
 
@@ -82,4 +86,97 @@ export function concat(...runs: readonly Uint8Array[]): Uint8Array {
     at += run.length;
   }
   return out;
+}
+
+export type SyntheticRecord = {
+  readonly version?: number;
+  readonly packetKind?: number;
+  readonly recordIndex?: number;
+  readonly timestamp?: number;
+  readonly pulse?: number;
+  readonly interbeatIntervals?: readonly number[];
+  /** Written verbatim into the count byte, to build records that lie about it. */
+  readonly interbeatCount?: number;
+  readonly motionMagnitude?: number;
+  readonly gravity?: readonly [number, number, number];
+  readonly stepCounter?: number;
+  /** Degrees Celsius. Written back through the documented divisor. */
+  readonly skinTemperature?: number;
+  readonly auxiliaryTemperatures?: readonly [number, number];
+  /** Raw bytes at unverified positions, keyed by offset. */
+  readonly at?: Readonly<Record<number, number>>;
+  /** Truncate the frame, to build a record that cannot hold its own layout. */
+  readonly length?: number;
+};
+
+/**
+ * Build one version 18 history record frame, laid out at the absolute offsets
+ * spec.ts states. Synthetic throughout: this proves the decoder reads the
+ * positions the specification gives it, and nothing about what firmware writes.
+ */
+export function buildHistoryFrame(record: SyntheticRecord = {}): Uint8Array {
+  const {
+    version = HISTORY_RECORD_VERSION,
+    packetKind = PACKET_KIND.HISTORICAL_DATA,
+    recordIndex = 1,
+    timestamp = 1_700_000_000,
+    pulse = 58,
+    interbeatIntervals = [1000, 1020],
+    motionMagnitude = 0.05,
+    gravity = [0, 0, 1],
+    stepCounter = 4321,
+    skinTemperature = 34,
+    auxiliaryTemperatures = [33.5, 33.8],
+  } = record;
+
+  // A short frame stays internally consistent: it declares the length it
+  // actually has, so it is a complete frame that simply cannot hold the layout.
+  const bytes = new Uint8Array(record.length ?? HISTORY_RECORD_LENGTH);
+  const view = new DataView(bytes.buffer);
+  const declaredLength = bytes.length - HEADER_LENGTH;
+
+  bytes[FRAME.MARKER] = FRAME_MARKER;
+  bytes[FRAME.REVISION] = 0x01;
+  view.setUint16(FRAME.DECLARED_LENGTH, declaredLength, true);
+
+  if (bytes.length > FRAME.BODY) bytes[FRAME.BODY] = packetKind;
+  if (bytes.length > HISTORY_RECORD.VERSION) bytes[HISTORY_RECORD.VERSION] = version;
+
+  if (bytes.length >= HISTORY_RECORD_LENGTH) {
+    view.setUint32(HISTORY_RECORD.RECORD_INDEX, recordIndex, true);
+    view.setUint32(HISTORY_RECORD.TIMESTAMP, timestamp, true);
+    view.setUint8(HISTORY_RECORD.PULSE, pulse);
+    view.setUint8(HISTORY_RECORD.INTERBEAT_COUNT, record.interbeatCount ?? interbeatIntervals.length);
+
+    interbeatIntervals.forEach((interval, index) => {
+      view.setUint16(HISTORY_RECORD.INTERBEAT_FIRST + index * 2, interval, true);
+    });
+
+    view.setFloat32(HISTORY_RECORD.MOTION_MAGNITUDE, motionMagnitude, true);
+    view.setFloat32(HISTORY_RECORD.GRAVITY_X, gravity[0], true);
+    view.setFloat32(HISTORY_RECORD.GRAVITY_Y, gravity[1], true);
+    view.setFloat32(HISTORY_RECORD.GRAVITY_Z, gravity[2], true);
+    view.setUint16(HISTORY_RECORD.STEP_COUNTER, stepCounter, true);
+    view.setUint16(HISTORY_RECORD.SKIN_TEMPERATURE, Math.round(skinTemperature * 100), true);
+    view.setInt16(HISTORY_RECORD.AUX_TEMPERATURE_1, Math.round(auxiliaryTemperatures[0] * 10), true);
+    view.setInt16(HISTORY_RECORD.AUX_TEMPERATURE_2, Math.round(auxiliaryTemperatures[1] * 10), true);
+
+    for (const [offset, value] of Object.entries(record.at ?? {})) {
+      bytes[Number(offset)] = value;
+    }
+
+  }
+
+  const bodyEnd = bytes.length - BODY_CHECKSUM_LENGTH;
+  if (bodyEnd > FRAME.BODY) {
+    view.setUint32(bodyEnd, signBody(bytes.subarray(FRAME.BODY, bodyEnd)), true);
+  }
+
+  view.setUint16(
+    FRAME.HEADER_CHECKSUM,
+    signHeader(bytes.subarray(0, HEADER_CHECKSUMMED_LENGTH)),
+    true,
+  );
+
+  return bytes;
 }
