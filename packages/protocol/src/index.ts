@@ -32,6 +32,13 @@ export {
   type CrcParameters,
 } from './crc.ts';
 export {
+  assertSendable,
+  encodeCommand,
+  encodeFrame,
+  encodeHistoryRequest,
+  type FrameFields,
+} from './encode.ts';
+export {
   decodeHistoryRecord,
   findImplausibilities,
   type Gravity,
