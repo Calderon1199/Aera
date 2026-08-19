@@ -20,7 +20,13 @@ import {
   ROUTING_LENGTH,
 } from './spec.ts';
 
-export type Envelope = {
+/**
+ * The fixed 8-byte prefix. Separated from the whole frame because it is
+ * self-describing: eight bytes are enough to know how long the frame is and,
+ * once the checksum variant is known, whether this is a frame start at all.
+ * That is what lets a reader confirm a candidate before waiting for its body.
+ */
+export type FrameHeader = {
   readonly revision: number;
   /** As written on the wire: body plus its 4-byte trailer. */
   readonly declaredLength: number;
@@ -29,11 +35,14 @@ export type Envelope = {
   readonly headerChecksum: number;
   /** Offsets 0..5, the exact range the header checksum covers. */
   readonly headerChecksummed: Uint8Array;
+  /** Total bytes this frame occupies on the wire. */
+  readonly frameLength: number;
+};
+
+export type Envelope = FrameHeader & {
   readonly body: Uint8Array;
   /** The four bytes after the body, unverified. */
   readonly bodyChecksum: number;
-  /** Total bytes this frame occupies on the wire. */
-  readonly frameLength: number;
 };
 
 /**
@@ -50,23 +59,28 @@ export type EnvelopeResult =
   | { readonly ok: true; readonly envelope: Envelope }
   | { readonly ok: false; readonly error: EnvelopeError };
 
+export type HeaderResult =
+  | { readonly ok: true; readonly header: FrameHeader }
+  | { readonly ok: false; readonly error: EnvelopeError };
+
 /** Bytes a frame occupies on the wire, given its declared length. */
 export function frameLengthOf(declaredLength: number): number {
   return declaredLength + HEADER_LENGTH;
 }
 
 /**
- * Decode one frame starting at `offset`. Trailing bytes beyond the frame are
- * ignored, so this is safe to call on a buffer holding several frames.
+ * Decode the 8-byte header at `offset`. Needs only those eight bytes, so a
+ * candidate frame start can be judged before the rest of it has arrived.
  */
-export function decodeEnvelope(bytes: Uint8Array, offset = 0): EnvelopeResult {
+export function decodeHeader(bytes: Uint8Array, offset = 0): HeaderResult {
   const available = bytes.length - offset;
 
-  if (available < FRAME.BODY) {
-    if (available > 0 && bytes[offset] !== FRAME_MARKER) {
-      return { ok: false, error: { kind: 'not-a-frame', marker: bytes[offset] ?? -1 } };
+  if (available < HEADER_LENGTH) {
+    const marker = bytes[offset];
+    if (marker !== undefined && marker !== FRAME_MARKER) {
+      return { ok: false, error: { kind: 'not-a-frame', marker } };
     }
-    return { ok: false, error: { kind: 'incomplete', have: available, need: HEADER_LENGTH } };
+    return { ok: false, error: { kind: 'incomplete', have: Math.max(available, 0), need: HEADER_LENGTH } };
   }
 
   const marker = bytes[offset + FRAME.MARKER] as number;
@@ -81,28 +95,46 @@ export function decodeEnvelope(bytes: Uint8Array, offset = 0): EnvelopeResult {
     return { ok: false, error: { kind: 'implausible-length', declaredLength } };
   }
 
-  const frameLength = frameLengthOf(declaredLength);
-  if (available < frameLength) {
-    return { ok: false, error: { kind: 'incomplete', have: available, need: frameLength } };
-  }
-
-  const bodyStart = offset + FRAME.BODY;
-  const bodyLength = declaredLength - BODY_CHECKSUM_LENGTH;
-  const bodyEnd = bodyStart + bodyLength;
-
   return {
     ok: true,
-    envelope: {
+    header: {
       revision: bytes[offset + FRAME.REVISION] as number,
       declaredLength,
       routing: bytes.subarray(offset + FRAME.ROUTING, offset + FRAME.ROUTING + ROUTING_LENGTH),
       headerChecksum: view.getUint16(FRAME.HEADER_CHECKSUM, true),
       headerChecksummed: bytes.subarray(offset, offset + HEADER_CHECKSUMMED_LENGTH),
+      frameLength: frameLengthOf(declaredLength),
+    },
+  };
+}
+
+/**
+ * Decode one frame starting at `offset`. Trailing bytes beyond the frame are
+ * ignored, so this is safe to call on a buffer holding several frames.
+ */
+export function decodeEnvelope(bytes: Uint8Array, offset = 0): EnvelopeResult {
+  const decoded = decodeHeader(bytes, offset);
+  if (!decoded.ok) return decoded;
+
+  const { header } = decoded;
+  const available = bytes.length - offset;
+
+  if (available < header.frameLength) {
+    return { ok: false, error: { kind: 'incomplete', have: available, need: header.frameLength } };
+  }
+
+  const bodyStart = offset + FRAME.BODY;
+  const bodyEnd = bodyStart + header.declaredLength - BODY_CHECKSUM_LENGTH;
+  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.length);
+
+  return {
+    ok: true,
+    envelope: {
+      ...header,
       body: bytes.subarray(bodyStart, bodyEnd),
       // Coerced unsigned: a checksum with the top bit set is a large positive
       // number, never a negative one.
-      bodyChecksum: view.getUint32(bodyEnd - offset, true) >>> 0,
-      frameLength,
+      bodyChecksum: view.getUint32(bodyEnd, true) >>> 0,
     },
   };
 }

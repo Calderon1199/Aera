@@ -8,11 +8,14 @@
 export {
   decodeBodyHeader,
   decodeEnvelope,
+  decodeHeader,
   frameLengthOf,
   type BodyHeader,
   type Envelope,
   type EnvelopeError,
   type EnvelopeResult,
+  type FrameHeader,
+  type HeaderResult,
 } from './envelope.ts';
 export {
   CRC_CATALOGUE,
