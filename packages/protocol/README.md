@@ -11,39 +11,28 @@ and [`docs/PROTOCOL.md`](../../docs/PROTOCOL.md).
 
 | Piece | State |
 |---|---|
-| Frame envelope | Header, body and both checksum fields decoded |
-| Frame stream | Fragmentation, several frames per notification, and resynchronisation past damage |
-| Checksums | Engine and catalogue done, tested against published check values |
+| Frame envelope | Header, body and both checksums, verified against the published opening frame |
+| Frame stream | Fragmentation, several frames per notification, and checksum-confirmed resynchronisation |
+| Checksums | CRC-16/MODBUS and CRC-32/ISO-HDLC, identified and confirmed |
 | Record decoder | Not started |
 
 ## What is not claimed
 
-**The band's checksum variant is unidentified.** [`src/crc.ts`](src/crc.ts) implements the
-algorithm rather than a choice: give it parameters, get a checksum function. What is
-missing is which variant the band uses, and guessing would reject valid frames while
-looking like a working check. So there is no default anywhere, and a frame that decodes is
-a frame that parsed, not a frame that is intact.
+**Nothing here is Verified.** [`docs/PROTOCOL.md`](../../docs/PROTOCOL.md) reserves that
+word for a field cross-checked against an independent reference on real hardware, and no
+device has been near this code. Everything is Documented: published by prior community
+work, and in the framing's case corroborated arithmetically.
 
-`identifyCrc` is the way out. Run a captured frame's header bytes and its checksum through
-the catalogue and it names every variant that reproduces the value. That turns the open
-question into a measurement, and it needs one real frame.
+That corroboration is worth stating precisely, because it is stronger than a citation and
+weaker than a measurement. The published opening frame satisfies both of its checksums
+under exactly one catalogue variant of each width. A wrong offset or a wrong variant would
+not agree, so the framing is very unlikely to be wrong. It is still not a hardware check,
+and the fields inside a record carry no such corroboration at all.
 
-**Resynchronisation is only safe when you supply a checksum.** Construct `FrameStream`
-with a `headerChecksum` and a candidate frame start is confirmed from its first eight bytes
-before the reader commits to it. Construct it without one and any marker byte is taken at
-face value, so a payload byte equal to the marker can park the stream on a length read out
-of the payload behind it. Since the band's variant is unidentified, production code has
-nothing to pass yet. Both behaviours have tests, and the gap is a `todo` in
-[`src/stream.test.ts`](src/stream.test.ts) rather than a guessed maximum frame length.
-
-`npm run example` shows the difference on one byte stream: one frame recovered and 26 bytes
-stranded without a checksum, both valid frames and nothing stranded with one.
-
-**Every fixture is synthetic.** The frames in the test suite are built by
+**Every other fixture is synthetic.** The frames in the test suite are built by
 [`src/testing/synthetic.ts`](src/testing/synthetic.ts) from the layout the specification
-states. They demonstrate that the decoder reads the positions it is told to read. They
-demonstrate nothing about what firmware writes, and no field here is Verified in the sense
-[`docs/PROTOCOL.md`](../../docs/PROTOCOL.md) defines.
+states, and now carry real checksums so that a built frame is a valid one. They demonstrate
+that the reader survives fragmentation and damage. They demonstrate nothing about firmware.
 
 ## Running it
 
