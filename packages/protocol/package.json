@@ -9,6 +9,7 @@
     ".": "./src/index.ts"
   },
   "scripts": {
+    "example": "node examples/decode-stream.ts",
     "test": "node --test",
     "typecheck": "tsc --noEmit"
   },

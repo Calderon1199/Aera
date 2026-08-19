@@ -10,6 +10,7 @@
     "apps/mobile"
   ],
   "scripts": {
+    "example": "npm run example --workspace @aera/protocol",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
