@@ -15,6 +15,8 @@ and [`docs/PROTOCOL.md`](../../docs/PROTOCOL.md).
 | Frame stream | Fragmentation, several frames per notification, and checksum-confirmed resynchronisation |
 | Checksums | CRC-16/MODBUS and CRC-32/ISO-HDLC, identified and confirmed |
 | Record decoder | Layout version 18, named fields where prior work validated them, the rest carried raw |
+| Frame encoder | Builds and signs frames, and refuses every command excluded by design |
+| Transfer driver | Store-then-confirm, with the unsafe ordering unrepresentable |
 
 ## What is not claimed
 
@@ -40,6 +42,25 @@ candidate is `u8_82` and never `spo2`.
 [`src/testing/synthetic.ts`](src/testing/synthetic.ts) from the layout the specification
 states, and now carry real checksums so that a built frame is a valid one. They demonstrate
 that the reader survives fragmentation and damage. They demonstrate nothing about firmware.
+
+## The ordering that loses data
+
+The band releases history in batches and waits to be told each one is safe. Confirming
+means it will not send those records again, so confirming before the write commits loses
+them permanently.
+
+`HistoryTransfer` makes that ordering impossible to write rather than merely discouraged.
+Accepting a batch-close returns a *store this* instruction and nothing else. The function
+that builds the confirmation frame is private to the module, and the only caller is
+`batchStored`, which refuses to run unless a batch is outstanding. Reporting a storage
+failure sends nothing at all, so the band's cursor stays put and it serves that batch
+again.
+
+```
+accept(batch close)  ->  { kind: 'store', batch }   // no frame to send exists yet
+batchStored()        ->  { kind: 'send', frame }    // the only path to a confirmation
+batchFailed(reason)  ->  { kind: 'aborted' }        // sends nothing, by construction
+```
 
 ## Running it
 

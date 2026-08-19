@@ -69,6 +69,10 @@ through the call that reports storage succeeded.
 **Done when:** a simulated multi-batch transfer, including a storage failure and a
 mid-transfer reconnect, drives to completion in tests, with no device involved.
 
+**Status: met.** Three batches, a storage failure in the middle and a reconnect after it,
+driven to completion with no device involved. The failed batch is never confirmed and is
+re-served afterwards, which is the property the milestone exists to establish.
+
 ---
 
 ## M3: API and schema
