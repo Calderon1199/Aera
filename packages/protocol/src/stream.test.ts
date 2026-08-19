@@ -106,6 +106,33 @@ describe('FrameStream', () => {
     strictEqual(stream.push(bytes.subarray(4)).length, 0);
   });
 
+  /**
+   * KNOWN GAP, blocked on the checksum layer.
+   *
+   * Resynchronisation currently trusts the first marker byte it finds. When that
+   * byte is payload rather than a frame start, the bytes at the length position
+   * are read as a length, and a large one parks the stream waiting for data that
+   * will never arrive. Every real frame behind it is then never emitted.
+   *
+   * docs/PROTOCOL.md states the intended defence: the header checksum covers the
+   * declared length, so a candidate frame start can be confirmed before the
+   * stream commits to it. That check cannot be written until the checksum
+   * parameters are sourced, so this failure is recorded rather than papered over
+   * with a guessed maximum frame length.
+   */
+  it('recovers the frame after a false marker inside a payload', { todo: true }, () => {
+    const stream = new FrameStream();
+    const frames = stream.push(
+      concat(
+        buildFrame({ declaredLength: 2, data: [0xaa, 0xaa, 0x0d, 0xf0] }),
+        buildFrame({ opcode: 0x7f }),
+      ),
+    );
+
+    strictEqual(frames.length, 1);
+    strictEqual(frames[0]?.body[2], 0x7f);
+  });
+
   it('counts what it has emitted', () => {
     const stream = new FrameStream();
     stream.push(concat(buildFrame(), buildFrame()));
