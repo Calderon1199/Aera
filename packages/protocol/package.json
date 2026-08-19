@@ -1,0 +1,22 @@
+{
+  "name": "@aera/protocol",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Pure decoder for the band's wire protocol. Bytes in, typed values out.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
