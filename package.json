@@ -1,0 +1,21 @@
+{
+  "name": "aera",
+  "private": true,
+  "type": "module",
+  "description": "A local-first companion for a fitness band you already own.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/web",
+    "apps/mobile"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "build": "npm run build --workspaces --if-present"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,51 @@
+# dependencies
+node_modules/
+vendor/
+.pnp.*
+
+# builds
+dist/
+build/
+*.tsbuildinfo
+
+# php
+/apps/api/storage/*.key
+/apps/api/public/storage
+/apps/api/bootstrap/cache/*.php
+
+# environment
+.env
+.env.*
+!.env.example
+
+# mobile
+/apps/mobile/ios/Pods/
+/apps/mobile/ios/build/
+/apps/mobile/android/.gradle/
+/apps/mobile/android/app/build/
+*.ipa
+*.apk
+
+# captures: device data never belongs in git
+/captures/
+*.capture.json
+*.sqlite
+*.sqlite3
+*.db
+
+# editors / os
+.DS_Store
+.idea/
+*.swp
+
+# ai tooling, kept out of the published repository
+.claude/
+.codex/
+.cursor/
+.cursorrules
+.aider*
+.windsurfrules
+.github/copilot-instructions.md
+.mcp.json
+CLAUDE.md
+AGENTS.md
