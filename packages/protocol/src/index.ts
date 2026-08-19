@@ -14,5 +14,13 @@ export {
   type EnvelopeError,
   type EnvelopeResult,
 } from './envelope.ts';
+export {
+  CRC_CATALOGUE,
+  createCrc,
+  identifyCrc,
+  type Crc,
+  type CrcName,
+  type CrcParameters,
+} from './crc.ts';
 export { FrameStream, type StreamStats } from './stream.ts';
 export * as spec from './spec.ts';
