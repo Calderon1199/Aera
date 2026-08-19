@@ -8,26 +8,26 @@
  *
  * Resynchronisation is only as good as its ability to recognise a frame start.
  * The marker alone is not enough: a payload byte can equal it, and reading a
- * length out of the payload behind it can park the stream waiting for bytes that
- * never arrive. Supply `headerChecksum` and a candidate is confirmed from its
- * first eight bytes before the reader commits to it, which is what the two-sum
- * design is for.
+ * length out of the payload behind it parks the reader waiting for bytes that
+ * never arrive. So a candidate is confirmed by its header checksum from its
+ * first eight bytes, before the reader commits to it. That is what the two-sum
+ * design is for, and it is why the declared length can be trusted cheaply.
  *
  * Nothing here touches Bluetooth. It takes byte runs from whatever produced them
  * and returns frames, which is what lets the same code run in the phone, the
  * server and CI.
  */
 
+import { headerChecksum as bandHeaderChecksum } from './checksums.ts';
 import type { Crc } from './crc.ts';
 import { decodeEnvelope, decodeHeader, type Envelope, type FrameHeader } from './envelope.ts';
 import { FRAME_MARKER } from './spec.ts';
 
 export type FrameStreamOptions = {
   /**
-   * Checksum over the first six bytes of a frame. Without it the reader trusts
-   * any marker byte it finds, which is safe for well-formed input and fragile
-   * for damaged input. The band's variant is not yet identified, so there is no
-   * default: see docs/PROTOCOL.md on evidence tiers.
+   * Checksum over the first six bytes of a frame, used to confirm a candidate
+   * frame start before the reader commits to it. Defaults to the band's own,
+   * named in spec.ts. Override only to decode a stream from something else.
    */
   readonly headerChecksum?: Crc;
 };
@@ -42,14 +42,14 @@ export type StreamStats = {
 };
 
 export class FrameStream {
-  readonly #headerChecksum: Crc | undefined;
+  readonly #headerChecksum: Crc;
   #pending: Uint8Array = new Uint8Array(0);
   #framesEmitted = 0;
   #bytesDiscarded = 0;
   #falseStartsRejected = 0;
 
   constructor(options: FrameStreamOptions = {}) {
-    this.#headerChecksum = options.headerChecksum;
+    this.#headerChecksum = options.headerChecksum ?? bandHeaderChecksum;
   }
 
   /** Bytes held back waiting for the rest of a frame. */
@@ -109,7 +109,6 @@ export class FrameStream {
 
   /** True when this looks like a real frame start. */
   #confirms(header: FrameHeader): boolean {
-    if (this.#headerChecksum === undefined) return true;
     if (this.#headerChecksum(header.headerChecksummed) === header.headerChecksum) return true;
 
     this.#falseStartsRejected += 1;

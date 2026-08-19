@@ -9,7 +9,7 @@
  * treating one as proof about firmware sends you chasing bugs that do not exist.
  */
 
-import type { Crc } from '../crc.ts';
+import { bodyChecksum as signBody, headerChecksum as signHeader } from '../checksums.ts';
 import {
   BODY_CHECKSUM_LENGTH,
   FRAME,
@@ -26,16 +26,12 @@ export type SyntheticFrame = {
   readonly variant?: number;
   readonly opcode?: number;
   readonly data?: readonly number[];
+  /** Overrides the real checksum, for testing frames that arrive damaged. */
   readonly headerChecksum?: number;
+  /** Overrides the real checksum, for testing frames that arrive damaged. */
   readonly bodyChecksum?: number;
   /** Overrides the computed value, for testing frames that lie about their size. */
   readonly declaredLength?: number;
-  /**
-   * Compute real checksums with these, instead of writing the literal values
-   * above. The variant is the test's choice and says nothing about the band,
-   * whose own variant is not identified.
-   */
-  readonly sign?: { readonly header?: Crc; readonly body?: Crc };
 };
 
 /** Build one well-formed frame, or a deliberately malformed one via overrides. */
@@ -47,8 +43,6 @@ export function buildFrame(frame: SyntheticFrame = {}): Uint8Array {
     variant = 0x03,
     opcode = 0x04,
     data = [],
-    headerChecksum = 0x0000,
-    bodyChecksum = 0x00000000,
   } = frame;
 
   const body = Uint8Array.from([kind, variant, opcode, ...data]);
@@ -60,19 +54,20 @@ export function buildFrame(frame: SyntheticFrame = {}): Uint8Array {
   bytes[FRAME.REVISION] = revision;
   view.setUint16(FRAME.DECLARED_LENGTH, declaredLength, true);
   bytes.set(routing.slice(0, ROUTING_LENGTH), FRAME.ROUTING);
-  view.setUint16(FRAME.HEADER_CHECKSUM, headerChecksum, true);
   bytes.set(body, FRAME.BODY);
-  view.setUint32(FRAME.BODY + body.length, bodyChecksum >>> 0, true);
 
-  const signHeader = frame.sign?.header;
-  if (signHeader !== undefined) {
-    view.setUint16(FRAME.HEADER_CHECKSUM, signHeader(bytes.subarray(0, HEADER_CHECKSUMMED_LENGTH)), true);
-  }
-
-  const signBody = frame.sign?.body;
-  if (signBody !== undefined) {
-    view.setUint32(FRAME.BODY + body.length, signBody(body) >>> 0, true);
-  }
+  // Real checksums by default, so a synthetic frame is a valid frame. Pass an
+  // explicit value to build one that arrives damaged.
+  view.setUint16(
+    FRAME.HEADER_CHECKSUM,
+    frame.headerChecksum ?? signHeader(bytes.subarray(0, HEADER_CHECKSUMMED_LENGTH)),
+    true,
+  );
+  view.setUint32(
+    FRAME.BODY + body.length,
+    (frame.bodyChecksum ?? signBody(body)) >>> 0,
+    true,
+  );
 
   return bytes;
 }
