@@ -14,7 +14,7 @@ and [`docs/PROTOCOL.md`](../../docs/PROTOCOL.md).
 | Frame envelope | Header, body and both checksums, verified against the published opening frame |
 | Frame stream | Fragmentation, several frames per notification, and checksum-confirmed resynchronisation |
 | Checksums | CRC-16/MODBUS and CRC-32/ISO-HDLC, identified and confirmed |
-| Record decoder | Not started |
+| Record decoder | Layout version 18, named fields where prior work validated them, the rest carried raw |
 
 ## What is not claimed
 
@@ -28,6 +28,13 @@ weaker than a measurement. The published opening frame satisfies both of its che
 under exactly one catalogue variant of each width. A wrong offset or a wrong variant would
 not agree, so the framing is very unlikely to be wrong. It is still not a hardware check,
 and the fields inside a record carry no such corroboration at all.
+
+**The record field names rest on one capture.** The offsets and meanings for the stored
+record come from prior work whose correlations were established over a single overnight
+recording of one still, sleeping subject, which its author states does not extend to
+waking, exercise or off-wrist wear. Positions that work left unmapped, disputed or only
+partly understood are read into `unverified`, keyed by offset and width, so a saturation
+candidate is `u8_82` and never `spo2`.
 
 **Every other fixture is synthetic.** The frames in the test suite are built by
 [`src/testing/synthetic.ts`](src/testing/synthetic.ts) from the layout the specification
