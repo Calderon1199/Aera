@@ -47,5 +47,12 @@ export {
   type RecordError,
   type RecordResult,
 } from './record.ts';
+export {
+  HistoryTransfer,
+  type Batch,
+  type TransferAction,
+  type TransferState,
+  type TransferStats,
+} from './transfer.ts';
 export { FrameStream, type FrameStreamOptions, type StreamStats } from './stream.ts';
 export * as spec from './spec.ts';

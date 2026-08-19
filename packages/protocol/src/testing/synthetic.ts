@@ -10,6 +10,7 @@
  */
 
 import { bodyChecksum as signBody, headerChecksum as signHeader } from '../checksums.ts';
+import { encodeFrame } from '../encode.ts';
 import {
   BODY_CHECKSUM_LENGTH,
   FRAME,
@@ -19,6 +20,7 @@ import {
   HISTORY_RECORD,
   HISTORY_RECORD_LENGTH,
   HISTORY_RECORD_VERSION,
+  METADATA,
   PACKET_KIND,
   ROUTING_LENGTH,
 } from '../spec.ts';
@@ -179,4 +181,18 @@ export function buildHistoryFrame(record: SyntheticRecord = {}): Uint8Array {
   );
 
   return bytes;
+}
+
+/** A metadata packet, which is how a transfer is bracketed. Synthetic. */
+export function buildMetadataFrame(subtype: number, payload: Uint8Array = new Uint8Array(0)): Uint8Array {
+  return encodeFrame({ kind: PACKET_KIND.METADATA, variant: 0, opcode: subtype, data: payload });
+}
+
+/**
+ * A batch-close packet carrying a position token. The token's bytes are
+ * arbitrary here, which is the point: the transfer must copy them back without
+ * interpreting them.
+ */
+export function buildBatchClose(token: readonly number[]): Uint8Array {
+  return buildMetadataFrame(METADATA.HISTORY_END, Uint8Array.from(token));
 }
