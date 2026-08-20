@@ -123,6 +123,6 @@ least.
 Development is Linux: PHP 8.3 native, Docker for Postgres and Redis. Herd is macOS and
 Windows only and is not part of this setup.
 
-iOS builds run on a GitHub-hosted macOS runner, which is free for public repositories. The
-output is an unsigned bundle, signed afterwards on-device with the developer's own Apple
-ID.
+iOS builds run on Expo's hosted service rather than on a local toolchain or a macOS
+runner, because signing an app for a personal Apple ID is the part that actually requires
+a Mac. Decision record 4 covers the trade. The result installs from a link on the phone.

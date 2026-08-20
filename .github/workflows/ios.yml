@@ -1,57 +1,65 @@
-# Builds an unsigned iOS bundle on a GitHub-hosted macOS runner.
+# Builds an installable iOS app without a Mac.
 #
-# This exists because the development machine is Linux and iOS builds require macOS.
-# macOS runners are free for public repositories, so the whole build path costs nothing.
-# Signing happens afterwards on the device, with the developer's own Apple ID.
+# The development machine is Linux, so the build happens on Expo's hosted
+# service, which also handles the Apple signing that otherwise needs Xcode. That
+# is why this runs on ubuntu rather than a macOS runner: no local toolchain is
+# involved at all.
+#
+# Needs an EXPO_TOKEN repository secret. Without one the job explains itself and
+# stops rather than failing, so a fork or a fresh clone is not greeted by a red
+# tick it cannot fix.
 
 name: ios
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Which eas.json build profile to use
+        default: development
+        type: choice
+        options: [development, production]
   push:
     tags: ['v*']
 
 jobs:
   build:
-    name: unsigned bundle
-    runs-on: macos-15
+    name: hosted build
+    runs-on: ubuntu-latest
 
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check for credentials
+        id: credentials
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+        run: |
+          if [ -z "$EXPO_TOKEN" ]; then
+            echo "No EXPO_TOKEN secret is set, so there is nothing to build with."
+            echo "Create one at expo.dev and add it under Settings, Secrets, Actions."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/setup-node@v4
+        if: steps.credentials.outputs.ready == 'true'
         with:
           node-version: '24'
           cache: npm
 
       - name: Install
+        if: steps.credentials.outputs.ready == 'true'
         run: npm ci || npm install
 
-      - name: Guard that the mobile app exists
-        run: |
-          if [ ! -d apps/mobile/ios ]; then
-            echo "apps/mobile/ios not present yet, nothing to build (milestone M4)."
-            exit 0
-          fi
-
-      - name: Build (unsigned)
-        working-directory: apps/mobile/ios
-        run: |
-          xcodebuild -workspace Aera.xcworkspace \
-            -scheme Aera \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -derivedDataPath build \
-            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-
-      - name: Package .ipa
-        working-directory: apps/mobile/ios
-        run: |
-          mkdir -p Payload
-          cp -R build/Build/Products/Release-iphoneos/Aera.app Payload/
-          zip -qr Aera-unsigned.ipa Payload
-
-      - uses: actions/upload-artifact@v4
+      - uses: expo/expo-github-action@v8
+        if: steps.credentials.outputs.ready == 'true'
         with:
-          name: Aera-unsigned-ipa
-          path: apps/mobile/ios/Aera-unsigned.ipa
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Build
+        if: steps.credentials.outputs.ready == 'true'
+        working-directory: apps/mobile
+        run: eas build --platform ios --profile ${{ inputs.profile || 'production' }} --non-interactive --no-wait
