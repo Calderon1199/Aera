@@ -1,0 +1,28 @@
+{
+  "name": "@aera/cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Sync the band from a Linux laptop. The validation rig, and a working collector.",
+  "license": "MIT",
+  "bin": {
+    "aera": "./src/main.ts"
+  },
+  "scripts": {
+    "aera": "node --no-warnings src/main.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "@aera/collector": "*",
+    "@aera/protocol": "*",
+    "node-ble": "^1.13.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
