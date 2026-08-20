@@ -29,7 +29,8 @@ Three consequences follow, and they drive most of the design:
    ┌──────────────────────────────────────────┐
    │  apps/mobile        React Native          │
    │                                           │
-   │   pairing · session · transfer loop       │
+   │   Bluetooth binding  (the only new risk)  │
+   │   packages/collector (session, transfer)  │
    │   packages/protocol  (decode)             │
    │   local buffer       (works offline)      │
    └──────┬───────────────────────────────────┘

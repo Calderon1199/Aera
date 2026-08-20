@@ -111,6 +111,17 @@ Staged:
 where their timestamps overlap. That cross-check is the only real proof the field
 positions are right on this firmware, and it is why step 1 comes first.
 
+**Status: everything except the hardware.** The reference signal decodes, and the session
+that drives a whole sync lives in `packages/collector`, exercised against fake ports with
+no phone, no band and no network. The comparison that decides this milestone is written and
+tested too, so the acceptance step is running it on real data rather than building anything
+further.
+
+What remains genuinely needs hardware: the React Native shell binding Bluetooth to those
+ports, an iOS build through the macOS runner, and the band itself. That is the point of the
+split. Whatever breaks on the day is the Bluetooth binding, because nothing else is left
+unproven.
+
 ---
 
 ## M5: Analytics
