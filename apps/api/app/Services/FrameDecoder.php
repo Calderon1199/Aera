@@ -42,7 +42,7 @@ final class FrameDecoder
     /**
      * Decode frames, keyed by whatever identifier the caller uses.
      *
-     * @param  array<string|int, string> $frames raw bytes, keyed by id
+     * @param  array<string|int, string> $frames base64 frames, keyed by id
      * @return array<string|int, array{ok: bool, record?: array<string, mixed>, error?: string}>
      */
     public function decode(array $frames): array
@@ -68,7 +68,7 @@ final class FrameDecoder
         foreach ($frames as $id => $frame) {
             $input .= json_encode([
                 'id' => (string) $id,
-                'frame' => base64_encode($frame),
+                'frame' => $frame,
             ], JSON_THROW_ON_ERROR)."\n";
         }
 

@@ -43,9 +43,9 @@ final class Archive
             // collapses before it reaches the database.
             $rows[RawFrame::hash($frame)] = [
                 'content_hash' => RawFrame::hash($frame),
-                'frame' => $frame,
+                'frame' => RawFrame::encodeBinary($frame),
                 'device_id' => $deviceId,
-                'batch_token' => $batchToken,
+                'batch_token' => $batchToken === null ? null : RawFrame::encodeBinary($batchToken),
                 'received_at' => Carbon::now(),
             ];
         }
@@ -56,7 +56,11 @@ final class Archive
         }
 
         $projected = $this->project(
-            RawFrame::query()->whereIn('content_hash', array_keys($rows))->whereNull('projected_at')->get()
+            RawFrame::query()
+                ->whereIn('content_hash', array_keys($rows))
+                ->whereNull('projected_at')
+                ->pluck('id')
+                ->all()
         );
 
         return [
@@ -83,8 +87,8 @@ final class Archive
 
         $totals = ['decoded' => 0, 'failed' => 0];
 
-        RawFrame::query()->orderBy('id')->chunkById(500, function ($frames) use (&$totals): void {
-            $result = $this->project($frames);
+        RawFrame::query()->orderBy('id')->select('id')->chunkById(500, function ($frames) use (&$totals): void {
+            $result = $this->project($frames->pluck('id')->all());
             $totals['decoded'] += $result['decoded'];
             $totals['failed'] += $result['failed'];
         });
@@ -93,21 +97,29 @@ final class Archive
     }
 
     /**
-     * @param  iterable<RawFrame> $frames
+     * @param  list<int> $frameIds
      * @return array{decoded: int, failed: int}
      */
-    public function project(iterable $frames): array
+    public function project(array $frameIds): array
     {
-        $bytes = [];
-        foreach ($frames as $frame) {
-            $bytes[$frame->id] = $frame->frame;
-        }
-
-        if ($bytes === []) {
+        if ($frameIds === []) {
             return ['decoded' => 0, 'failed' => 0];
         }
 
-        $results = $this->decoder->decode($bytes);
+        // Read the frames back already base64 encoded, which is both what
+        // crosses the driver safely and what the decoder expects, so no binary
+        // is handled in PHP at all.
+        $frames = RawFrame::query()
+            ->whereIn('id', $frameIds)
+            ->selectRaw(RawFrame::selectBase64())
+            ->pluck('frame_base64', 'id')
+            ->all();
+
+        if ($frames === []) {
+            return ['decoded' => 0, 'failed' => 0];
+        }
+
+        $results = $this->decoder->decode($frames);
 
         $readings = [];
         $decodedIds = [];
