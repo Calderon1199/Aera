@@ -7,6 +7,8 @@
  * decoder testable without hardware.
  */
 
+import type { HistoryRecord } from '@aera/protocol';
+
 /** Writing to the band's command characteristic. */
 export type Transport = {
   write(frame: Uint8Array): Promise<void>;
@@ -34,6 +36,15 @@ export type SessionEvent =
 export type Ports = {
   readonly transport: Transport;
   readonly store: FrameStore;
+  /**
+   * Decoded records from each stored batch, streamed rather than accumulated.
+   *
+   * A full sync is a fortnight of per-second records, so the session holds none
+   * of them: the consumer decides what is worth keeping. For the reference
+   * cross-check that is only the handful whose timestamps fall inside the window
+   * the reference signal was actually recorded over.
+   */
+  readonly onRecords?: (records: readonly HistoryRecord[]) => void;
   /** Optional, and never load bearing. Progress reporting only. */
   readonly onEvent?: (event: SessionEvent) => void;
   /** Seconds since the epoch. Injected so tests are not at the mercy of a clock. */

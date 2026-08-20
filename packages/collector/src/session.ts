@@ -20,6 +20,7 @@ import {
   HistoryTransfer,
   decodeHeartRate,
   type Envelope,
+  type HistoryRecord,
   type TransferAction,
 } from '@aera/protocol';
 
@@ -140,7 +141,7 @@ export class CollectorSession {
         return;
 
       case 'store':
-        await this.#store(action.batch.index, action.batch.frames);
+        await this.#store(action.batch.index, action.batch.frames, action.batch.records);
         return;
 
       case 'complete':
@@ -165,7 +166,11 @@ export class CollectorSession {
    * store has actually resolved, and a rejection takes the path that sends
    * nothing, leaving the batch the band's to serve again.
    */
-  async #store(batch: number, frames: readonly Uint8Array[]): Promise<void> {
+  async #store(
+    batch: number,
+    frames: readonly Uint8Array[],
+    records: readonly HistoryRecord[],
+  ): Promise<void> {
     try {
       await this.#ports.store.append(frames);
     } catch (error) {
@@ -176,6 +181,7 @@ export class CollectorSession {
 
     this.#framesStored += frames.length;
     this.#emit({ kind: 'stored', batch, frames: frames.length });
+    if (records.length > 0) this.#ports.onRecords?.(records);
 
     await this.#perform(this.#transfer.batchStored());
     this.#emit({ kind: 'confirmed', batch });

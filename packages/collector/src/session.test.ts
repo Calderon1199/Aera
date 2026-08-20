@@ -222,6 +222,43 @@ describe('CollectorSession', () => {
     strictEqual(h.session.summary.batchesConfirmed, 2);
   });
 
+  it('hands decoded records to the consumer as each batch is stored', async () => {
+    const seen: number[] = [];
+    const session = new CollectorSession({
+      transport: { write: async () => {} },
+      store: { append: async () => {} },
+      onRecords: (records) => {
+        for (const record of records) seen.push(record.pulse);
+      },
+    });
+
+    await session.start();
+    await session.receive(metadataFrame(spec.METADATA.HISTORY_START));
+    await session.receive(recordFrame(58, 1_755_000_000));
+    await session.receive(recordFrame(59, 1_755_000_001));
+    await session.receive(metadataFrame(spec.METADATA.HISTORY_END, TOKEN));
+
+    // Streamed rather than accumulated: the session keeps none of them.
+    deepStrictEqual(seen, [58, 59]);
+    deepStrictEqual(Object.keys(session.summary).includes('records'), false);
+  });
+
+  it('hands over nothing when the batch was not stored', async () => {
+    const seen: number[] = [];
+    const session = new CollectorSession({
+      transport: { write: async () => {} },
+      store: { append: async () => { throw new Error('disk full'); } },
+      onRecords: (records) => { for (const record of records) seen.push(record.pulse); },
+    });
+
+    await session.start();
+    await session.receive(metadataFrame(spec.METADATA.HISTORY_START));
+    await session.receive(recordFrame(58, 1_755_000_000));
+    await session.receive(metadataFrame(spec.METADATA.HISTORY_END, TOKEN));
+
+    deepStrictEqual(seen, []);
+  });
+
   it('ignores notifications once a session has finished', async () => {
     const h = harness();
     await h.session.start();
