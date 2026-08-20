@@ -117,10 +117,14 @@ no phone, no band and no network. The comparison that decides this milestone is 
 tested too, so the acceptance step is running it on real data rather than building anything
 further.
 
-What remains genuinely needs hardware: the React Native shell binding Bluetooth to those
-ports, an iOS build through the macOS runner, and the band itself. That is the point of the
-split. Whatever breaks on the day is the Bluetooth binding, because nothing else is left
-unproven.
+The React Native shell is written too, and unproven: a build for a physical iPhone needs a
+paid Apple Developer membership, which decision record 5 covers. Rather than pay before
+knowing whether the decoding is even correct, the cross-check runs from the development
+laptop instead, through `apps/cli`, which reuses everything and adds only a second
+Bluetooth binding.
+
+So what remains is the band itself. Whatever breaks on the day is a Bluetooth binding,
+because nothing else is left unproven.
 
 ---
 
