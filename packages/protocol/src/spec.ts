@@ -262,3 +262,27 @@ export const HEART_RATE_FLAGS = {
 
 /** Beat intervals are transmitted in units of 1/1024 second. */
 export const INTERVAL_UNITS_PER_SECOND = 1024;
+
+/**
+ * The vendor GATT service, from ryanbr/noop docs/PROTOCOL.md. Tier: Documented.
+ *
+ * These channels stay silent until the link is encrypted. Pairing is just-works,
+ * with no PIN and nothing for the wearer to confirm.
+ *
+ * Which notify channel carries which traffic is not established, so every one of
+ * them is subscribed and the frames are fed into a single reader. That is safe
+ * precisely because the framing is self-describing: a frame either passes its
+ * checksums or it is discarded, and a packet kind the transfer does not care
+ * about is ignored. Guessing the channel would be an assumption; subscribing to
+ * all of them is not.
+ */
+export const GATT = {
+  SERVICE: 'fd4b0001-cce1-4033-93ce-002d5875f58a',
+  COMMAND: 'fd4b0002-cce1-4033-93ce-002d5875f58a',
+  NOTIFY: [
+    'fd4b0003-cce1-4033-93ce-002d5875f58a',
+    'fd4b0004-cce1-4033-93ce-002d5875f58a',
+    'fd4b0005-cce1-4033-93ce-002d5875f58a',
+    'fd4b0007-cce1-4033-93ce-002d5875f58a',
+  ],
+} as const;
