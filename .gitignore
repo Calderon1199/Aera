@@ -32,6 +32,8 @@ build/
 *.sqlite
 *.sqlite3
 *.db
+*.db-shm
+*.db-wal
 
 # editors / os
 .DS_Store
