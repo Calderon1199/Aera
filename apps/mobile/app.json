@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Aera",
+    "slug": "aera",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "dev.aera.collector",
+      "infoPlist": {
+        "NSBluetoothAlwaysUsageDescription": "Aera reads the data your band already recorded, directly over Bluetooth. Nothing is sent to any vendor.",
+        "UIBackgroundModes": ["bluetooth-central"]
+      }
+    },
+    "plugins": [
+      "expo-dev-client",
+      [
+        "react-native-ble-plx",
+        {
+          "isBackgroundEnabled": true,
+          "modes": ["peripheral", "central"],
+          "bluetoothAlwaysPermission": "Aera reads the data your band already recorded, directly over Bluetooth."
+        }
+      ]
+    ],
+    "extra": {
+      "apiUrl": "http://127.0.0.1:8000",
+      "eas": {}
+    }
+  }
+}
