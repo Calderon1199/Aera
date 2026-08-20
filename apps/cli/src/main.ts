@@ -8,7 +8,10 @@
  * Bluetooth binding is new.
  *
  *   aera scan
- *   aera sync --address AA:BB:CC:DD:EE:FF
+ *   aera pair --address AA:BB:CC:DD:EE:FF
+      Bond with the band. Needed once, before the vendor channels will say anything.
+
+  aera sync --address AA:BB:CC:DD:EE:FF
  *   aera upload --api http://127.0.0.1:8000 --token ...
  */
 
@@ -18,6 +21,7 @@ import { CollectorSession, compareWithReference, type Comparison, type DecodedSa
 import type { HistoryRecord } from '@aera/protocol';
 
 import { BandLink } from './bluetooth.ts';
+import { pair } from './pairing.ts';
 import { FrameStore } from './store.ts';
 import { upload } from './upload.ts';
 
@@ -42,6 +46,8 @@ async function main(): Promise<number> {
   switch (command) {
     case 'scan':
       return scan(Number(values.seconds));
+    case 'pair':
+      return bond(values.address);
     case 'sync':
       return sync(values);
     case 'upload':
@@ -64,6 +70,25 @@ function usage(): void {
   aera upload --api URL --token T [--db aera.db]
       Send buffered frames to the API. Safe to run repeatedly.
 `);
+}
+
+async function bond(address?: string): Promise<number> {
+  if (address === undefined) {
+    console.error('Which band? Run "aera scan" first, then pass --address.');
+    return 1;
+  }
+
+  console.log(`Bonding with ${address}`);
+  const result = await pair(address);
+
+  if (result.paired) {
+    console.log('  bonded. The vendor channels will talk now.');
+    return 0;
+  }
+
+  console.error(`  failed: ${result.detail}`);
+  console.error('  Check the band is awake and that no phone is holding it.');
+  return 1;
 }
 
 async function scan(seconds: number): Promise<number> {
