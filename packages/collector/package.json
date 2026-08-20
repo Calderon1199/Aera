@@ -1,0 +1,25 @@
+{
+  "name": "@aera/collector",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Drives a sync session. Pure orchestration: the platform is injected, never imported.",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aera/protocol": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
