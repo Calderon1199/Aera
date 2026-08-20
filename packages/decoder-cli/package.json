@@ -1,0 +1,25 @@
+{
+  "name": "@aera/decoder-cli",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Command-line adapter so the PHP API can run the decoder without reimplementing it.",
+  "license": "MIT",
+  "bin": {
+    "aera-decode": "./src/cli.ts"
+  },
+  "scripts": {
+    "test": "node --test",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@aera/protocol": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
