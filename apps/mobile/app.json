@@ -11,9 +11,6 @@
       "bundleIdentifier": "dev.aera.collector",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "Aera reads the data your band already recorded, directly over Bluetooth. Nothing is sent to any vendor.",
-        "UIBackgroundModes": [
-          "bluetooth-central"
-        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
