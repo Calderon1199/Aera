@@ -49,7 +49,7 @@ final class FrameDecoder
     {
         $results = [];
 
-        foreach (array_chunk($frames, $this->chunkSize, preserveKeys: true) as $chunk) {
+        foreach (array_chunk($frames, $this->chunkSize, preserve_keys: true) as $chunk) {
             foreach ($this->runChunk($chunk) as $id => $result) {
                 $results[$id] = $result;
             }
