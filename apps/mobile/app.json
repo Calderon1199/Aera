@@ -11,7 +11,10 @@
       "bundleIdentifier": "dev.aera.collector",
       "infoPlist": {
         "NSBluetoothAlwaysUsageDescription": "Aera reads the data your band already recorded, directly over Bluetooth. Nothing is sent to any vendor.",
-        "UIBackgroundModes": ["bluetooth-central"]
+        "UIBackgroundModes": [
+          "bluetooth-central"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "plugins": [
@@ -20,14 +23,19 @@
         "react-native-ble-plx",
         {
           "isBackgroundEnabled": true,
-          "modes": ["peripheral", "central"],
+          "modes": [
+            "peripheral",
+            "central"
+          ],
           "bluetoothAlwaysPermission": "Aera reads the data your band already recorded, directly over Bluetooth."
         }
       ]
     ],
     "extra": {
       "apiUrl": "http://127.0.0.1:8000",
-      "eas": {}
+      "eas": {
+        "projectId": "604b1c5e-0912-4ad7-8458-38419560a533"
+      }
     }
   }
 }
