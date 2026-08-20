@@ -234,3 +234,31 @@ export const HISTORY_END = {
   /** Recorded for completeness. Not used: the token is echoed, not interpreted. */
   TRIM_CURSOR: 21,
 } as const;
+
+/**
+ * The standard Bluetooth heart-rate service, which the band exposes alongside
+ * its vendor-specific one.
+ *
+ * These are not reverse-engineered. They are assigned numbers from the Bluetooth
+ * SIG's public specification, which is a stronger kind of documented than
+ * anything else in this file: a published standard rather than a community
+ * measurement. The service needs no pairing, which is what makes it usable as an
+ * independent reference before anything else works.
+ */
+export const STANDARD_HEART_RATE = {
+  SERVICE: '0000180d-0000-1000-8000-00805f9b34fb',
+  MEASUREMENT: '00002a37-0000-1000-8000-00805f9b34fb',
+} as const;
+
+/** Flag bits of a heart-rate measurement, per the SIG specification. */
+export const HEART_RATE_FLAGS = {
+  /** 0 means the rate is a u8, 1 means u16 LE. */
+  WIDE_VALUE: 0b0000_0001,
+  CONTACT_DETECTED: 0b0000_0010,
+  CONTACT_SUPPORTED: 0b0000_0100,
+  ENERGY_PRESENT: 0b0000_1000,
+  INTERVALS_PRESENT: 0b0001_0000,
+} as const;
+
+/** Beat intervals are transmitted in units of 1/1024 second. */
+export const INTERVAL_UNITS_PER_SECOND = 1024;

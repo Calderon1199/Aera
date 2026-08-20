@@ -39,6 +39,12 @@ export {
   type FrameFields,
 } from './encode.ts';
 export {
+  decodeHeartRate,
+  type HeartRateError,
+  type HeartRateMeasurement,
+  type HeartRateResult,
+} from './heart-rate.ts';
+export {
   decodeHistoryRecord,
   findImplausibilities,
   type Gravity,
