@@ -32,8 +32,11 @@ it('never exposes unverified positions', function (): void {
 it('filters by time window', function (): void {
     postFrames(['recordA', 'recordB', 'recordC'])->assertStatus(201);
 
+    // Encoded: an unescaped + in a query string is read as a space, and the
+    // date then fails validation rather than filtering anything.
     $response = $this->withToken(config('aera.ingest_token'))
-        ->getJson('/api/readings?from='.date('c', 1755000001));
+        ->getJson('/api/readings?from='.urlencode(gmdate('c', 1755000001)));
 
+    $response->assertOk();
     expect($response->json('readings'))->toHaveCount(2);
 });
