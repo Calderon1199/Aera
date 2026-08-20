@@ -18,8 +18,14 @@ to prevent.
 ## Decision
 
 **The API decodes server-side by running the TypeScript decoder as a subprocess.**
-`packages/protocol` gains a thin command-line entry point that reads raw frames and writes
-decoded rows as JSON. PHP invokes it, in batches, and writes what comes back.
+A thin command-line adapter reads raw frames and writes decoded rows as JSON. PHP invokes
+it, in batches, and writes what comes back.
+
+That adapter lives in its own package, `packages/decoder-cli`, and not in
+`packages/protocol`. A command-line entry point has to touch stdin and stdout, and rule 1
+says the decoder imports no platform API at all. The rule is what lets the same decoder run
+in the phone, the server and CI unchanged, so the adapter moves rather than the rule
+bending.
 
 Two consequences of that are worth stating as rules rather than leaving implied:
 
