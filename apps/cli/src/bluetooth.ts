@@ -143,6 +143,10 @@ export class BandLink {
       );
     }
 
+    // Let the stack settle before anything is written. Five subscriptions have
+    // just been set up, and BlueZ refuses overlapping operations while it works
+    // through them.
+    await new Promise((resolve) => setTimeout(resolve, 2500));
   }
 
   transport(): Transport {
@@ -154,7 +158,21 @@ export class BandLink {
         // With response. The acknowledgement is what raises encryption on the
         // link, and the vendor channels stay silent until it is raised.
         //
-        await command.writeValue(Buffer.from(frame), { type: 'request' });
+        // BlueZ answers "In Progress" when it is still settling something else,
+        // which happens routinely right after subscribing to five channels. It
+        // means try again shortly, not that the write is impossible.
+        for (let attempt = 0; ; attempt += 1) {
+          if (process.env.AERA_DEBUG === '1') console.error('  [write attempt', attempt, ']');
+          try {
+            await command.writeValue(Buffer.from(frame), { type: 'request' });
+            return;
+          } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            if (attempt >= 15 || !/in progress/i.test(message)) throw error;
+
+            await new Promise((resolve) => setTimeout(resolve, 700));
+          }
+        }
       },
     };
   }
