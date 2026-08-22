@@ -18,7 +18,7 @@
 import { parseArgs } from 'node:util';
 
 import { CollectorSession, compareWithReference, type Comparison, type DecodedSample } from '@aera/collector';
-import type { HistoryRecord } from '@aera/protocol';
+import { spec, type HistoryRecord } from '@aera/protocol';
 
 import { BandLink } from './bluetooth.ts';
 import { pair } from './pairing.ts';
@@ -174,11 +174,18 @@ async function sync(values: {
       },
     });
 
-    console.log('Connected. Reading the reference signal while history drains.\n');
+    // The published opening frame first. This generation expects a session to
+    // be opened before it will answer anything, and the frame is a constant
+    // nobody on this project chose, so it is written verbatim from spec.ts.
+    console.log('Connected. Opening the session.');
+    await link.transport().write(spec.OPENING_FRAME);
+
+    console.log('Reading the reference signal while history drains.\n');
     await session.start();
     await waitFor(() => finished, 30 * 60 * 1000);
   } catch (error) {
     console.error(`\nBluetooth: ${error instanceof Error ? error.message : String(error)}`);
+    if (process.env.AERA_DEBUG === '1' && error instanceof Error) console.error(error.stack);
     await link.disconnect();
     store.close();
     return 1;
