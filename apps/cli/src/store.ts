@@ -27,6 +27,11 @@ export class FrameStore implements CollectorFrameStore {
     this.#database.exec(`
       PRAGMA journal_mode = WAL;
       PRAGMA synchronous = FULL;
+
+      -- Collecting and uploading are separate processes on one file, so a
+      -- writer has to wait for the other rather than failing outright. Without
+      -- this, an upload started during a sync dies on "database is locked".
+      PRAGMA busy_timeout = 30000;
       CREATE TABLE IF NOT EXISTS frames (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         frame TEXT NOT NULL,
