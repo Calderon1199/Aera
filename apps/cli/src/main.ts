@@ -133,12 +133,15 @@ async function sync(values: {
   const startedAt = Math.floor(Date.now() / 1000);
 
   let finished = false;
+  let lastActivity = Date.now();
 
   const session = new CollectorSession({
     transport: link.transport(),
     store,
     onRecords: (records) => keepComparable(decoded, records, startedAt),
     onEvent: (event) => {
+      lastActivity = Date.now();
+
       switch (event.kind) {
         case 'requested':
           console.log('  asked for history, waiting for the first batch');
@@ -182,7 +185,10 @@ async function sync(values: {
 
     console.log('Reading the reference signal while history drains.\n');
     await session.start();
-    await waitFor(() => finished, 30 * 60 * 1000);
+
+    // Idle time, not elapsed time. A full drain is hours of steady batches, and
+    // a watchdog on total duration cannot tell that apart from a stall.
+    await waitFor(() => finished, () => lastActivity, 10 * 60 * 1000);
   } catch (error) {
     console.error(`\nBluetooth: ${error instanceof Error ? error.message : String(error)}`);
     if (process.env.AERA_DEBUG === '1' && error instanceof Error) console.error(error.stack);
@@ -287,18 +293,26 @@ function keepComparable(into: DecodedSample[], records: readonly HistoryRecord[]
   }
 }
 
-function waitFor(done: () => boolean, timeoutMs: number): Promise<void> {
+function waitFor(
+  done: () => boolean,
+  lastActivity: () => number,
+  idleTimeoutMs: number,
+): Promise<void> {
   return new Promise((resolve, reject) => {
-    const startedAt = Date.now();
     const timer = setInterval(() => {
       if (done()) {
         clearInterval(timer);
         resolve();
         return;
       }
-      if (Date.now() - startedAt > timeoutMs) {
+
+      if (Date.now() - lastActivity() > idleTimeoutMs) {
         clearInterval(timer);
-        reject(new Error('the transfer stopped making progress'));
+        reject(
+          new Error(
+            `the band sent nothing for ${idleTimeoutMs / 60000} minutes. Whatever it did send is stored`,
+          ),
+        );
       }
     }, 250);
   });
