@@ -135,8 +135,14 @@ Echo the position token verbatim. Do not rebuild it from its decoded numbers.
 
 ## The stored record
 
-One entry per second, retained roughly a fortnight. Field positions are absolute frame
-offsets and are gated on a **record version byte**: firmware writes several layouts, and
+One entry per second. Retention is longer than assumed: a single drain from one band
+returned history spanning **2026-04-19 to 2026-08-20**, four months rather than the
+fortnight this document previously stated. That is one device and one firmware, so it is an
+observation rather than a specification, but the planning assumption of a fortnight is
+wrong in the safe direction only for storage, and wrong in the unsafe direction for how
+long a first sync takes.
+
+Field positions are absolute frame offsets and are gated on a **record version byte**: firmware writes several layouts, and
 decoding one against another's positions produces confident nonsense.
 
 **Two different bytes, and confusing them is the exact failure this rule exists to
@@ -148,6 +154,13 @@ them.
 
 Positions live in `packages/protocol/src/spec.ts` and nowhere else. Duplicating them
 guarantees drift, and a drifted offset fails silently.
+
+**This firmware writes at least two layouts.** Of 227,504 frames drained from a real band,
+219,576 were version 18 and 7,928 were **version 26**, which is not documented anywhere
+this project has found. The decoder refuses version 26 rather than reading it against
+version 18's positions, and the raw frames are kept, so they can be decoded whenever that
+layout is worked out. This is exactly the case the version gate exists for, and it turned
+up on the first real sync.
 
 The field map below is layout version 18, and comes from the same prior work as the
 framing, specifically its type-47 field inventory. One caveat governs the whole table and

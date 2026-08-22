@@ -4,8 +4,9 @@ How the pieces fit, and why the seams are where they are.
 
 ## The shape of the problem
 
-The band records continuously to onboard flash and holds roughly a fortnight. It records
-whether or not anything is listening. **The band is the server**: syncing is draining its
+The band records continuously to onboard flash and holds months rather than the fortnight
+originally assumed here: a first drain returned four months of history. It records whether
+or not anything is listening. **The band is the server**: syncing is draining its
 flash, not streaming live.
 
 Three consequences follow, and they drive most of the design:
