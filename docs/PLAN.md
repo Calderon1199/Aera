@@ -151,6 +151,16 @@ reviewer that the raw layer actually exists.
 
 **Done when:** a full night reads end to end from device to chart.
 
+**Status: built, not yet met.** The dashboard reads live from the API: stat tiles, a chart
+per measure, and the raw-frame inspector, with real data from a real band flowing through
+all of it. What is missing is the night. The archive holds partial days so far, because the
+band serves its history oldest first and the drain is still working forward, so no
+contiguous night has arrived yet. Nothing needs building for that, only time.
+
+Sleep is deliberately absent rather than pending: the sleep-state byte is not established,
+and rule 3 says an unestablished field is never displayed. It belongs to M5 and to a
+validated field, not to a chart.
+
 ---
 
 ## M7: Portfolio finish
