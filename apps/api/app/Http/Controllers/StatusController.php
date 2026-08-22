@@ -31,6 +31,16 @@ final class StatusController extends Controller
              count(distinct date(recorded_at)) as days'
         )->first();
 
+        // The day worth opening on is the one with the most readings, not the
+        // newest. A sync that has just started leaves the newest day almost
+        // empty, and an empty chart is a worse first impression than an honest
+        // one of a day that actually has data.
+        $busiest = DB::table('readings')
+            ->selectRaw('date(recorded_at) as day, count(*) as total')
+            ->groupByRaw('1')
+            ->orderByDesc('total')
+            ->first();
+
         $layouts = DB::table('readings')
             ->select('layout_version', DB::raw('count(*) as total'))
             ->groupBy('layout_version')
@@ -48,6 +58,7 @@ final class StatusController extends Controller
                 'days' => (int) ($readings->days ?? 0),
                 'first_recorded' => $readings->first_recorded ?? null,
                 'last_recorded' => $readings->last_recorded ?? null,
+                'busiest_day' => $busiest->day ?? null,
             ],
             'layouts' => $layouts,
             // Stated by the API, not just in the documentation, so a consumer
