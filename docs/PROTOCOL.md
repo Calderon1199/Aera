@@ -51,6 +51,29 @@ unusually decisive.
 Until Aera runs that check on real hardware, **nothing here is Verified**. Everything below
 is Documented, and the codebase must say so.
 
+## What a real band has established so far
+
+A first drain of one band, 227,504 frames. None of this is Verified, because none of it is
+the cross-check above, but it is considerably more than a citation.
+
+**The framing is right.** Every one of the 227,504 frames satisfied both checksums. Not a
+sample: all of them. A wrong offset, a wrong length field or a wrong CRC variant could not
+produce that.
+
+**Orientation is right, and physics says so.** Median magnitude across 219,576 decoded
+records is 1.005 g. Gravity has a fixed strength, so three float offsets read wrongly would
+give nonsense rather than a value within half a percent of 1.
+
+**Surface temperature is plausible.** Median 32.96 C, range 30.07 to 38.03, which is a
+human wrist and not a coincidence of scaling.
+
+**Pulse is consistent with the interval field, loosely.** Across 4,627 records carrying
+both, the rate implied by the beat intervals correlates with the pulse byte at 0.61, with a
+mean absolute difference of 10.7 bpm. Two fields at different offsets, in different units,
+tracking each other is meaningful. It is also exactly what beat-to-beat variability looks
+like against a smoothed rate, so it neither confirms nor refutes the offsets on its own.
+Only the standard characteristic settles that.
+
 ## Transport
 
 A vendor-specific GATT service alongside the standard ones. The custom channels stay silent
