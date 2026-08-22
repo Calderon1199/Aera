@@ -75,10 +75,34 @@ export class BandLink {
     this.#session = session;
 
     const adapter = await session.bluetooth.defaultAdapter();
-    if (!(await adapter.isDiscovering())) await adapter.startDiscovery();
 
-    const device = await adapter.waitDevice(address.toUpperCase());
-    await device.connect();
+    // A bonded band is already known to BlueZ, so no scan is needed. Scanning
+    // while connecting is worse than unnecessary: BlueZ cancels the attempt with
+    // le-connection-abort-by-local, because it cannot do both at once.
+    let device;
+    try {
+      device = await adapter.getDevice(address.toUpperCase());
+    } catch {
+      if (!(await adapter.isDiscovering())) await adapter.startDiscovery();
+      device = await adapter.waitDevice(address.toUpperCase());
+    }
+
+    await adapter.stopDiscovery().catch(() => undefined);
+
+    // A bonded, trusted band is often already being reconnected by BlueZ on its
+    // own. Asking again in the middle of that answers "In Progress", which means
+    // wait rather than fail, so the connection is waited for instead.
+    if (!(await device.isConnected())) {
+      try {
+        await device.connect();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/in progress/i.test(message)) throw error;
+
+        await waitUntilConnected(device);
+      }
+    }
+
     this.#device = device as never;
 
     device.on?.('disconnect', () => handlers.onDisconnect());
@@ -119,7 +143,6 @@ export class BandLink {
       );
     }
 
-    await adapter.stopDiscovery().catch(() => undefined);
   }
 
   transport(): Transport {
@@ -130,6 +153,7 @@ export class BandLink {
 
         // With response. The acknowledgement is what raises encryption on the
         // link, and the vendor channels stay silent until it is raised.
+        //
         await command.writeValue(Buffer.from(frame), { type: 'request' });
       },
     };
@@ -142,6 +166,21 @@ export class BandLink {
     this.#device = undefined;
     this.#command = undefined;
   }
+}
+
+/** Wait for a connection BlueZ is already establishing. */
+async function waitUntilConnected(
+  device: { isConnected(): Promise<boolean> },
+  timeoutMs = 20_000,
+): Promise<void> {
+  const startedAt = Date.now();
+
+  while (Date.now() - startedAt < timeoutMs) {
+    if (await device.isConnected()) return;
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  }
+
+  throw new Error('the band never finished connecting');
 }
 
 /** Advertised service UUIDs, which BlueZ exposes as a device property. */

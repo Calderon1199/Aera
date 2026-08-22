@@ -26,6 +26,8 @@ declare module 'node-ble' {
 
   export type Device = {
     getName(): Promise<string>;
+    isConnected(): Promise<boolean>;
+    isPaired(): Promise<boolean>;
     getAddress(): Promise<string>;
     connect(): Promise<void>;
     disconnect(): Promise<void>;
