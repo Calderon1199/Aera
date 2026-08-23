@@ -24,6 +24,12 @@ return [
         /* Frames per subprocess. One process per frame would be absurd. */
         'chunk' => (int) env('AERA_DECODER_CHUNK', 500),
 
-        'timeout' => (int) env('AERA_DECODER_TIMEOUT', 120),
+        /*
+         * Generous on purpose. The decoder handles 500 frames in under two
+         * seconds unloaded, so this is not about its speed: a first import runs
+         * alongside a sync and a database, and a timeout tuned to an idle
+         * machine fails exactly when the work is heaviest.
+         */
+        'timeout' => (int) env('AERA_DECODER_TIMEOUT', 600),
     ],
 ];
