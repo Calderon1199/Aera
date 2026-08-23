@@ -11,6 +11,10 @@
     "apps/mobile"
   ],
   "scripts": {
+    "start": "npm run services && (npm run api & npm run web & wait)",
+    "services": "docker compose up -d",
+    "api": "cd apps/api && php artisan serve --host=127.0.0.1 --port=8000",
+    "web": "npm run dev --workspace @aera/web",
     "example": "npm run example --workspace @aera/protocol",
     "test": "npm run test --workspaces --if-present",
     "typecheck": "npm run typecheck --workspaces --if-present",

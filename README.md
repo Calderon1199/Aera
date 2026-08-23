@@ -52,12 +52,32 @@ three.
 
 ## Getting started
 
-Nothing to run yet. When there is, it will be:
+```bash
+npm install               # workspace dependencies
+npm start                 # postgres, redis, the API, and the dashboard
+```
+
+The dashboard is then at **http://127.0.0.1:5173** and the API at
+**http://127.0.0.1:8000**. Two files are needed first, neither of them committed:
+`apps/api/.env` (copy `.env.example` and run `php artisan key:generate`), and
+`apps/web/.env` holding `VITE_AERA_TOKEN` set to the same value as `AERA_INGEST_TOKEN`.
+
+To collect from the band, on Linux:
 
 ```bash
-docker compose up -d      # postgres + redis
-npm install               # workspace dependencies
-npm test                  # protocol decoder test suite
+npm run aera --workspace @aera/cli -- scan
+npm run aera --workspace @aera/cli -- pair --address AA:BB:CC:DD:EE:FF
+npm run aera --workspace @aera/cli -- sync --address AA:BB:CC:DD:EE:FF
+npm run aera --workspace @aera/cli -- upload --api http://127.0.0.1:8000 --token YOUR_TOKEN
+```
+
+See [`apps/cli/README.md`](apps/cli/README.md). Syncing and uploading are both safe to
+repeat and safe to interrupt.
+
+```bash
+npm test                  # the decoder, the collector, the adapter
+npm run typecheck
+npm run example           # decode a published frame with no hardware
 ```
 
 Requires PHP 8.3+, Composer 2, Node 22+, and Docker.
