@@ -6,6 +6,8 @@
  * is no CORS configuration to get wrong.
  */
 
+export { parseTimestamp } from './time.ts';
+
 const token = import.meta.env.VITE_AERA_TOKEN ?? '';
 
 export type Status = {
@@ -65,15 +67,6 @@ async function get<T>(path: string): Promise<T> {
   }
 
   return (await response.json()) as T;
-}
-
-/**
- * Postgres hands back "2026-04-19 17:00:00+00". That is not ISO 8601: it needs a
- * T, and the offset needs both halves. Left as-is it parses to Invalid Date, and
- * an invalid date becomes NaN coordinates rather than a visible error.
- */
-export function parseTimestamp(value: string): Date {
-  return new Date(value.replace(' ', 'T').replace(/([+-]\d{2})$/, '$1:00'));
 }
 
 export const api = {
