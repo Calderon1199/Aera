@@ -134,6 +134,7 @@ async function sync(values: {
 
   let finished = false;
   let lastActivity = Date.now();
+  let connected = false;
 
   const session = new CollectorSession({
     transport: link.transport(),
@@ -166,35 +167,63 @@ async function sync(values: {
     },
   });
 
-  try {
-    console.log(`Connecting to ${values.address}`);
-    await link.connect(values.address, {
-      onFrames: (chunk) => void session.receive(chunk),
-      onReference: (chunk) => session.receiveReference(chunk),
-      onDisconnect: () => {
-        console.log('\n  link dropped');
-        session.disconnected();
-      },
-    });
+  /**
+   * Keep going across dropped links.
+   *
+   * The band drops the connection every so often, and a fortnight of history
+   * takes far longer than it stays up. Reconnecting is safe because the cursor
+   * only advanced for batches that were confirmed, so the band re-serves
+   * whatever was in flight, and the archive deduplicates the repeats.
+   */
+  let attempt = 0;
+  const maxAttempts = 200;
 
-    // The published opening frame first. This generation expects a session to
-    // be opened before it will answer anything, and the frame is a constant
-    // nobody on this project chose, so it is written verbatim from spec.ts.
-    console.log('Connected. Opening the session.');
-    await link.transport().write(spec.OPENING_FRAME);
+  while (!finished && attempt < maxAttempts) {
+    try {
+      console.log(attempt === 0 ? `Connecting to ${values.address}` : `  reconnecting (attempt ${attempt})`);
 
-    console.log('Reading the reference signal while history drains.\n');
-    await session.start();
+      await link.connect(values.address, {
+        onFrames: (chunk) => void session.receive(chunk),
+        onReference: (chunk) => session.receiveReference(chunk),
+        onDisconnect: () => {
+          connected = false;
+          session.disconnected();
+        },
+      });
 
-    // Idle time, not elapsed time. A full drain is hours of steady batches, and
-    // a watchdog on total duration cannot tell that apart from a stall.
-    await waitFor(() => finished, () => lastActivity, 10 * 60 * 1000);
-  } catch (error) {
-    console.error(`\nBluetooth: ${error instanceof Error ? error.message : String(error)}`);
-    if (process.env.AERA_DEBUG === '1' && error instanceof Error) console.error(error.stack);
-    await link.disconnect();
-    store.close();
-    return 1;
+      connected = true;
+      lastActivity = Date.now();
+
+      // The session opener, every time. A reconnected link is a new session as
+      // far as the band is concerned.
+      await link.transport().write(spec.OPENING_FRAME);
+
+      if (attempt === 0) {
+        console.log('Connected. Reading the reference signal while history drains.\n');
+        await session.start();
+      } else {
+        await session.reconnected();
+      }
+
+      await waitFor(() => finished || !connected, () => lastActivity, 10 * 60 * 1000);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      console.log(`\n  link trouble: ${message}`);
+      if (process.env.AERA_DEBUG === '1' && error instanceof Error) console.error(error.stack);
+    }
+
+    if (finished) break;
+
+    await link.disconnect().catch(() => undefined);
+    attempt += 1;
+
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+
+  if (!finished) {
+    console.log(`\n  stopped after ${attempt} reconnection attempts. Everything received is stored.`);
   }
 
   await link.disconnect();
