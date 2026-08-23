@@ -140,6 +140,19 @@ estimates and are labelled as such.
 **Done when:** metrics are reproducible from stored data, and re-running over the same
 window is deterministic.
 
+**Status: met.** Daily metrics rebuild from readings, and re-running over the real archive
+produces a byte-identical result, checked by hashing the table before and after.
+
+What the milestone predicted came true almost immediately. Variability was the part that
+resisted: computed across a whole day RMSSD read near 290 ms, roughly triple anything
+physiological, and correcting that exposed a deeper problem, which is that the band's
+interval stream is subsampled and multi-interval records do not look like consecutive
+beats. So beat-to-beat variability is reported as an estimate with its coverage, and kept
+off the dashboard. See docs/PROTOCOL.md.
+
+Rest staging is not implemented, and not pending either: it would have to rest on the
+sleep-state byte, whose meaning is not established. It waits for a validated field.
+
 ---
 
 ## M6: Dashboard

@@ -67,6 +67,31 @@ give nonsense rather than a value within half a percent of 1.
 **Surface temperature is plausible.** Median 32.96 C, range 30.07 to 38.03, which is a
 human wrist and not a coincidence of scaling.
 
+**The interval field corroborates the pulse field, and this is the strongest
+evidence in the project so far.** Aggregated per day over real data, the heart rate implied
+by the intervals lands on the pulse byte almost exactly:
+
+| Day | Intervals | Median interval | Implied bpm | Pulse field |
+|---|---|---|---|---|
+| 2026-04-26 | 30,951 | 706 ms | 86 | 86 |
+| 2026-04-27 | 11,812 | 733 ms | 82 | 83 |
+
+Two fields at different offsets, in different units, decoded independently, agreeing to
+within a beat. A wrong offset on either would not produce that.
+
+**But the interval stream is subsampled, and records carrying several intervals look
+wrong.** About one interval arrives per second against a faster heartbeat, so what the band
+sends is a sample of the beat series rather than the series. Worse, on records that do
+carry two to four intervals, successive differences average around 375 ms, which no pair of
+consecutive beats produces. Either those intervals are not consecutive beats, or the array
+is not laid out the way this decoder reads it beyond the first entry.
+
+The consequence is stated rather than worked around: **beat-to-beat variability is not
+currently derivable from this device's data.** RMSSD is computed where adjacency is a fact
+rather than an assumption, is reported as an estimate alongside the interval coverage that
+explains it, and is deliberately absent from the dashboard. A missing number that can be
+trusted beats a present one that cannot.
+
 **Pulse is consistent with the interval field, loosely.** Across 4,627 records carrying
 both, the rate implied by the beat intervals correlates with the pulse byte at 0.61, with a
 mean absolute difference of 10.7 bpm. Two fields at different offsets, in different units,
