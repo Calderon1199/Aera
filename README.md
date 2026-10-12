@@ -4,8 +4,10 @@ A local-first companion for a fitness band you already own. It reads the data yo
 has already recorded, over Bluetooth, and keeps it on hardware you control: no vendor
 account, no subscription, nothing sent to anyone else's server.
 
-> **Status: planning.** The architecture and roadmap are settled; implementation has not
-> started. See [`docs/PLAN.md`](docs/PLAN.md).
+> **Status: working end to end from a Linux laptop.** The decoder, the transfer state
+> machine, the API (ingest, storage, daily metrics) and the dashboard are built and tested,
+> and the CLI drains a real band's history into the API. The React Native app is written but
+> not yet proven on a physical phone. Milestone by milestone: [`docs/PLAN.md`](docs/PLAN.md).
 
 ---
 
